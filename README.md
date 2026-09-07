@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Talko UI
 
-## Getting Started
+Admin UI for **talko-service** (`/talko-service/v1`): calls, CDR, analytics, dialer,
+DIDs, vendors, partner configs, agent mapping, custom fields, API keys, webhooks, assets.
 
-First, run the development server:
+Stack: Next.js (App Router) + TypeScript + Tailwind + axios + zustand.
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local   # point NEXT_PUBLIC_TALKO_API_BASE_URL at your service
+npm install
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Auth (own authentication)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Talko-service accepts either header on every request (see
+`src/middlewares/authentication.py` in the `talko` repo):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `API-KEY: <partner key>` — Talko-issued `tkp_live_*` or console API key
+- `Authorization: Bearer <jwt>` — console-issued JWT, validated via gRPC
 
-## Learn More
+This UI has its **own login page** (`/login`): paste an API key or a Bearer token
+(optionally with a default partner ID). It is stored only in the browser
+(localStorage, key `talko.auth`) and attached to every API call by
+`lib/api-client.ts`. A 401 clears the session and returns to `/login`.
+Point `NEXT_PUBLIC_AUTH_LOGIN_URL` at a future username/password endpoint if you
+add one — until then, direct credential entry is the login.
 
-To learn more about Next.js, take a look at the following resources:
+## Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `app/login` — own-auth sign in (API key / Bearer tabs)
+- `app/(dashboard)/*` — guarded pages: dashboard, calls, cdr, analytics,
+  call-records, dialer, dids, vendors, vendor-configs, partner-configs,
+  agent-mapping, custom-fields, api-keys, webhooks, assets, health
+- `lib/` — `config.ts`, `endpoints.ts` (mirrors `src/routes/__init__.py`),
+  `types.ts` (mirrors DTOs), `api-client.ts` (auth headers + `{data}` unwrap),
+  `services.ts` (one function per backend operation)
+- `store/auth-store.ts` — persisted credential store
+- `components/` — sidebar nav, auth guard, ui primitives
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Backend reference
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+API catalog was derived from `talko/src/components/*/controllers.py`.
+Response envelope is `{ status, message, data }` (see
+`src/components/common/responses.py`) — the client unwraps `data` automatically.
