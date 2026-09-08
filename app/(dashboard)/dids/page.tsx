@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ListOrdered } from "lucide-react";
 import { Badge, Button, Card, Input, Label, Select } from "@/components/ui";
 import { PageHeader, ErrorBox, EmptyState } from "@/components/page";
@@ -31,6 +31,31 @@ export default function DidsPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [assignJson, setAssignJson] = useState('{"dids_for_service_board": []}');
   const [aiForm, setAiForm] = useState({ partner_id: defaultPartner, agent_bot_id: "", did_number: "" });
+  const [aiDids, setAiDids] = useState<string[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const loadAiDids = async () => {
+    const pid = aiForm.partner_id || defaultPartner;
+    if (!pid) return;
+    setAiLoading(true);
+    try {
+      const data = await fetchAiAvailableDids(pid);
+      const list = (data as { dids?: unknown })?.dids;
+      setAiDids(Array.isArray(list) ? list.map(String) : []);
+    } catch (e) {
+      setError(apiErrorMessage(e));
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Initial load: normal-DID inventory + AI-agent DIDs.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+    loadAiDids();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -58,6 +83,14 @@ export default function DidsPage() {
     setMsg("");
     try {
       await fn();
+      setMsg(ok);
+      setSelected([]);
+      await load();
+      await loadAiDids();
+    } catch (e) {
+      setError(apiErrorMessage(e));
+    }
+  };
       setMsg(ok);
       setSelected([]);
       await load();
@@ -98,7 +131,7 @@ export default function DidsPage() {
         </Card>
       )}
 
-      {rows.length === 0 ? <EmptyState message="No DIDs. Run a search above." /> : (
+      {rows.length === 0 ? <EmptyState message="No normal DIDs in inventory." hint="list-dids covers normal-type DIDs only — AI-agent DIDs appear in the panel below." /> : (
         <Card className="overflow-x-auto">
           <table className="w-full min-w-[800px] text-sm">
             <thead><tr className="border-b bg-zinc-50 text-left text-xs uppercase text-zinc-500"><th className="px-3 py-2"></th><th className="px-3 py-2">DID</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Partner</th><th className="px-3 py-2">Board</th><th className="px-3 py-2">Agent</th></tr></thead>
@@ -120,6 +153,29 @@ export default function DidsPage() {
       {total != null && <p className="mt-2 text-xs text-zinc-500">total {total}</p>}
 
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <Card className="p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-medium">AI-agent DIDs (partner {aiForm.partner_id || defaultPartner || "—"})</h2>
+            <Button size="sm" variant="outline" onClick={loadAiDids} disabled={aiLoading}>{aiLoading ? "Loading…" : "Refresh"}</Button>
+          </div>
+          {aiDids.length === 0 ? (
+            <p className="py-3 text-center text-sm text-zinc-500">No free AI-agent DIDs for this partner.</p>
+          ) : (
+            <ul className="max-h-44 space-y-1 overflow-y-auto">
+              {aiDids.map((d) => (
+                <li key={d} className="flex items-center justify-between rounded-md bg-zinc-50 px-2.5 py-1.5 font-mono text-xs">
+                  <span>{d}</span>
+                  <button
+                    className="font-sans font-semibold text-blue-600 hover:underline cursor-pointer"
+                    onClick={() => setAiForm({ ...aiForm, did_number: d })}
+                  >
+                    Use ↓
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
         <Card className="p-4">
           <h2 className="mb-2 font-medium">Assign DIDs (JSON body)</h2>
           <textarea rows={5} className="w-full rounded-md border border-zinc-300 p-2 font-mono text-xs" value={assignJson} onChange={(e) => setAssignJson(e.target.value)} />
