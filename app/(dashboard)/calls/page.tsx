@@ -21,6 +21,9 @@ export default function CallsPage() {
     agent_number: "",
     to_number: "",
     partner_id: defaultPartner,
+    enable_ai_bridge: false,
+    dedicated_did: "",
+    voiceai_agent_id: "",
   });
   const [callId, setCallId] = useState("");
   const [transferTo, setTransferTo] = useState("");
@@ -84,10 +87,31 @@ export default function CallsPage() {
               <Label>To number</Label>
               <Input value={create.to_number} onChange={(e) => setCreate({ ...create, to_number: e.target.value })} placeholder="91…" />
             </div>
+            <div className="col-span-2 flex items-center gap-2 rounded-md bg-mist px-3 py-2">
+              <input
+                id="ai-bridge"
+                type="checkbox"
+                checked={create.enable_ai_bridge}
+                onChange={(e) => setCreate({ ...create, enable_ai_bridge: e.target.checked })}
+              />
+              <Label htmlFor="ai-bridge" className="!mb-0">AI bridge — route to voiceai agent on answer</Label>
+            </div>
+            {create.enable_ai_bridge && (
+              <>
+                <div>
+                  <Label>Dedicated DID *</Label>
+                  <Input value={create.dedicated_did} onChange={(e) => setCreate({ ...create, dedicated_did: e.target.value })} placeholder="91804…" />
+                </div>
+                <div>
+                  <Label>voiceai agent ID *</Label>
+                  <Input value={create.voiceai_agent_id} onChange={(e) => setCreate({ ...create, voiceai_agent_id: e.target.value })} placeholder="agent_abc" />
+                </div>
+              </>
+            )}
           </div>
           <Button
             className="mt-3"
-            disabled={busy}
+            disabled={busy || (create.enable_ai_bridge && (!create.dedicated_did || !create.voiceai_agent_id))}
             onClick={() =>
               run(() =>
                 createCall({
@@ -95,13 +119,18 @@ export default function CallsPage() {
                   entity_id: create.entity_id || undefined,
                   service_board_id: create.service_board_id ? Number(create.service_board_id) : undefined,
                   partner_id: create.partner_id ? Number(create.partner_id) : undefined,
-                  agent_number: create.agent_number || undefined,
+                  agent_number: create.enable_ai_bridge ? undefined : create.agent_number || undefined,
                   to_number: create.to_number || undefined,
+                  enable_ai_bridge: create.enable_ai_bridge || undefined,
+                  dedicated_did: create.enable_ai_bridge ? create.dedicated_did || undefined : undefined,
+                  context_data: create.enable_ai_bridge && create.voiceai_agent_id
+                    ? { voiceai_agent_id: create.voiceai_agent_id }
+                    : undefined,
                 }),
               )
             }
           >
-            Initiate
+            {create.enable_ai_bridge ? "Initiate AI call" : "Initiate"}
           </Button>
         </Card>
 
