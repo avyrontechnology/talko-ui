@@ -49,14 +49,6 @@ export default function DidsPage() {
     }
   };
 
-  useEffect(() => {
-    // Initial load: normal-DID inventory + AI-agent DIDs.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-    loadAiDids();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const load = async () => {
     setLoading(true);
     setError("");
@@ -91,13 +83,14 @@ export default function DidsPage() {
       setError(apiErrorMessage(e));
     }
   };
-      setMsg(ok);
-      setSelected([]);
-      await load();
-    } catch (e) {
-      setError(apiErrorMessage(e));
-    }
-  };
+
+  useEffect(() => {
+    // Initial load: normal-DID inventory + AI-agent DIDs.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+    loadAiDids();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div>
