@@ -118,7 +118,7 @@ export default function DidsPage() {
       {selected.length > 0 && (
         <Card className="mb-3 flex flex-wrap items-center gap-2 p-3 text-sm">
           <span>{selected.length} selected</span>
-          <Button size="sm" variant="outline" onClick={() => act(() => unassignDids(selected), `Unassigned ${selected.length} DID(s)`)}>Unassign</Button>
+          <Button size="sm" variant="outline" onClick={() => { if (confirm(`Unassign ${selected.length} DID(s)? This DELETES the DID records from the database — the numbers will no longer be usable for calls until re-assigned.`)) act(() => unassignDids(selected), `Unassigned ${selected.length} DID(s)`); }}>Unassign</Button>
           <Button size="sm" variant="outline" onClick={() => act(() => updateDidStatus({ did_numbers: selected, action: "set_available" }), "Marked available")}>Set available</Button>
           <Button size="sm" variant="outline" onClick={() => act(() => updateDidStatus({ did_numbers: selected, action: "mark_cooling_period" }), "Marked cooling")}>Cooling</Button>
         </Card>
