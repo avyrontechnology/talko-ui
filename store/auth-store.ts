@@ -14,11 +14,17 @@ interface AuthState {
   apiKey: string | null;
   partnerId: string;
   label: string;
+  /** Resolved from GET /auth/context after JWT login; null = unknown. */
+  isSuperadmin: boolean | null;
+  /** Superadmin cross-partner scope; sent as X-Partner-Scope (JWT only). */
+  scopedPartnerId: string | null;
   _hasHydrated: boolean;
   loginWithToken: (token: string, opts?: { partnerId?: string; label?: string }) => void;
   loginWithApiKey: (apiKey: string, opts?: { partnerId?: string; label?: string }) => void;
   logout: () => void;
   setHydrated: () => void;
+  setSuperadmin: (value: boolean | null) => void;
+  setScope: (partnerId: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -29,6 +35,8 @@ export const useAuthStore = create<AuthState>()(
       apiKey: null,
       partnerId: "",
       label: "",
+      isSuperadmin: null,
+      scopedPartnerId: null,
       _hasHydrated: false,
       loginWithToken: (token, opts) =>
         set({
@@ -37,6 +45,8 @@ export const useAuthStore = create<AuthState>()(
           apiKey: null,
           partnerId: opts?.partnerId ?? "",
           label: opts?.label ?? "",
+          isSuperadmin: null,
+          scopedPartnerId: null,
         }),
       loginWithApiKey: (apiKey, opts) =>
         set({
@@ -45,10 +55,23 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           partnerId: opts?.partnerId ?? "",
           label: opts?.label ?? "",
+          isSuperadmin: false,
+          scopedPartnerId: null,
         }),
       logout: () =>
-        set({ authMode: null, token: null, apiKey: null, partnerId: "", label: "" }),
+        set({
+          authMode: null,
+          token: null,
+          apiKey: null,
+          partnerId: "",
+          label: "",
+          isSuperadmin: null,
+          scopedPartnerId: null,
+        }),
       setHydrated: () => set({ _hasHydrated: true }),
+      setSuperadmin: (value) => set({ isSuperadmin: value }),
+      setScope: (partnerId) =>
+        set({ scopedPartnerId: partnerId, partnerId: partnerId ?? "" }),
     }),
     {
       name: talkoConfig.tokenStorageKey,
@@ -58,6 +81,8 @@ export const useAuthStore = create<AuthState>()(
         apiKey: s.apiKey,
         partnerId: s.partnerId,
         label: s.label,
+        isSuperadmin: s.isSuperadmin,
+        scopedPartnerId: s.scopedPartnerId,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();

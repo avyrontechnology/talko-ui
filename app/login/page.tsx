@@ -2,10 +2,12 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { KeyRound, Fingerprint, ShieldCheck, PhoneCall, BarChart3, Plug2 } from "lucide-react";
+import { KeyRound, Fingerprint, ShieldCheck, PhoneCall, BarChart3, Plug2, UserRound } from "lucide-react";
 import { Button, Card, Input, Label } from "@/components/ui";
 import { useAuthStore } from "@/store/auth-store";
 import { talkoConfig } from "@/lib/config";
+import { isAccountAuthConfigured, loginWithAccount } from "@/lib/auth-service";
+import { fetchAuthContext } from "@/lib/services";
 import { cn } from "@/lib/utils";
 
 const HIGHLIGHTS = [
@@ -18,22 +20,61 @@ function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const expired = search.get("expired");
-  const [mode, setMode] = useState<"apiKey" | "jwt">("apiKey");
+  const [mode, setMode] = useState<"apiKey" | "jwt" | "account">("apiKey");
   const [credential, setCredential] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [partnerId, setPartnerId] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const loginWithApiKey = useAuthStore((s) => s.loginWithApiKey);
   const loginWithToken = useAuthStore((s) => s.loginWithToken);
+  const setSuperadmin = useAuthStore((s) => s.setSuperadmin);
+  const accountAuth = isAccountAuthConfigured();
 
-  const submit = (e: React.FormEvent) => {
+  const resolveContext = async () => {
+    try {
+      const ctx = await fetchAuthContext();
+      setSuperadmin(ctx.is_superadmin);
+    } catch {
+      setSuperadmin(null);
+    }
+  };
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (mode === "account") {
+      if (!username.trim() || !password) {
+        setError("Username and password are required");
+        return;
+      }
+      setBusy(true);
+      try {
+        const cred = await loginWithAccount(username.trim(), password);
+        if (cred.token) {
+          loginWithToken(cred.token, { partnerId });
+          await resolveContext();
+        } else if (cred.apiKey) {
+          loginWithApiKey(cred.apiKey, { partnerId });
+        }
+        router.replace("/dashboard");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Sign in failed");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (!credential.trim()) {
       setError(mode === "apiKey" ? "API key is required" : "Bearer token is required");
       return;
     }
     if (mode === "apiKey") loginWithApiKey(credential, { partnerId });
-    else loginWithToken(credential, { partnerId });
+    else {
+      loginWithToken(credential, { partnerId });
+      void resolveContext();
+    }
     router.replace("/dashboard");
   };
 
@@ -111,6 +152,9 @@ function LoginForm() {
               [
                 { id: "apiKey", label: "API Key", icon: KeyRound },
                 { id: "jwt", label: "Bearer Token", icon: Fingerprint },
+                ...(accountAuth
+                  ? [{ id: "account", label: "Account", icon: UserRound } as const]
+                  : []),
               ] as const
             ).map((t) => (
               <button
@@ -129,6 +173,31 @@ function LoginForm() {
           </div>
 
           <form onSubmit={submit} className="space-y-3.5">
+            {mode === "account" ? (
+              <>
+                <div>
+                  <Label>Username</Label>
+                  <Input
+                    autoComplete="username"
+                    placeholder="you@company.com"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <Label>Password</Label>
+                  <Input
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-10"
+                  />
+                </div>
+              </>
+            ) : (
             <div>
               <Label>{mode === "apiKey" ? "API Key  ·  sent as API-KEY header" : "JWT  ·  sent as Authorization: Bearer"}</Label>
               <Input
@@ -140,15 +209,25 @@ function LoginForm() {
                 className="h-10 font-mono"
               />
             </div>
+            )}
             <div>
               <Label>Partner ID <span className="font-normal text-slate/60">(default filter scope)</span></Label>
               <Input placeholder="e.g. 2" value={partnerId} onChange={(e) => setPartnerId(e.target.value)} className="h-10" />
             </div>
             {error && <p className="text-xs font-medium text-brick">{error}</p>}
-            <Button type="submit" size="lg" className="w-full font-bold">
+            <Button type="submit" size="lg" className="w-full font-bold" disabled={busy}>
               Sign in to console
             </Button>
           </form>
+
+          {accountAuth && (
+            <p className="mt-4 text-center text-xs text-slate/70">
+              New here?{" "}
+              <a href="/signup" className="font-semibold text-navy underline">
+                Create an account
+              </a>
+            </p>
+          )}
 
           <div className="mt-5 flex items-start gap-2 rounded-lg bg-mist p-3 text-[11px] leading-relaxed text-slate/80">
             <ShieldCheck size={15} className="mt-px shrink-0 text-navy" />

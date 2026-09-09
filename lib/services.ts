@@ -20,6 +20,15 @@ import type {
 } from "./types";
 
 /* ---------- Health ---------- */
+
+export interface AuthContext {
+  user_id: number | null;
+  partner_id: number | null;
+  auth_type: "jwt" | "api_key";
+  is_superadmin: boolean;
+}
+
+export const fetchAuthContext = () => getData<AuthContext>(endpoints.authContext);
 export const fetchHealth = () => getData<HealthResponse>(endpoints.health);
 
 /* ---------- Calls ---------- */

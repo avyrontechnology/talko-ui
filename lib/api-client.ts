@@ -9,11 +9,13 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const { authMode, token, apiKey } = useAuthStore.getState();
+  const { authMode, token, apiKey, scopedPartnerId } = useAuthStore.getState();
   if (authMode === "apiKey" && apiKey) {
     config.headers["API-KEY"] = apiKey;
   } else if (authMode === "jwt" && token) {
     config.headers.Authorization = `Bearer ${token}`;
+    // Superadmin cross-partner scope; backend honors it for ADMIN JWTs only.
+    if (scopedPartnerId) config.headers["X-Partner-Scope"] = scopedPartnerId;
   }
   return config;
 });

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Bell, ChevronRight, Command, Search } from "lucide-react";
 import { talkoConfig } from "@/lib/config";
 import { useAuthStore } from "@/store/auth-store";
+import { ScopeSwitcher } from "./scope-switcher";
 import { NAV_INDEX } from "./sidebar";
 
 function hostOf(url: string): string {
@@ -105,6 +106,7 @@ export function Topbar() {
             Partner {partnerId}
           </span>
         )}
+        <ScopeSwitcher />
       </div>
 
       <button

@@ -5,6 +5,9 @@
 export const endpoints = {
   health: "/health",
 
+  // Auth context (who-am-I: auth type, scope, superadmin flag)
+  authContext: "/auth/context",
+
   // Calls
   callCreate: "/call",
   callHangup: "/call/hangup",
