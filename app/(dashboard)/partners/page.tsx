@@ -8,6 +8,7 @@ import { PageHeader, ErrorBox } from "@/components/page";
 import {
   createApiKey,
   createPartnerConfig,
+  createTalkoUser,
   fetchTalkoUsers,
   fetchVendorConfigs,
   fetchVendors,
@@ -49,6 +50,9 @@ export default function PartnersPage() {
   const [editRole, setEditRole] = useState("viewer");
   const [editPartner, setEditPartner] = useState("");
   const [editActive, setEditActive] = useState(true);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [addUser, setAddUser] = useState({ name: "", email: "", phone: "", password: "", role: "viewer", partner_id: "" });
+  const [provisioned, setProvisioned] = useState<{ email: string; password: string; role: string; partner: string } | null>(null);
 
   useEffect(() => {
     if (isSuperadmin !== true) return;
@@ -66,8 +70,45 @@ export default function PartnersPage() {
     }
   };
 
-  const saveUser = async (id: string) => {
+  const provisionUser = async () => {
     setUsersError("");
+    if (!addUser.name.trim() || !addUser.email.trim() || !addUser.password) {
+      setUsersError("Name, email and password are required");
+      return;
+    }
+    const pid = addUser.partner_id.trim() ? Number(addUser.partner_id.trim()) : null;
+    if (addUser.partner_id.trim() && !Number.isFinite(pid)) {
+      setUsersError("Partner ID must be numeric");
+      return;
+    }
+    if (addUser.role !== "superadmin" && pid == null) {
+      setUsersError("Non-superadmin users need a partner ID");
+      return;
+    }
+    try {
+      const created = await createTalkoUser({
+        name: addUser.name.trim(),
+        email: addUser.email.trim(),
+        ...(addUser.phone.trim() ? { phone: addUser.phone.trim() } : {}),
+        password: addUser.password,
+        role: addUser.role,
+        partner_id: pid,
+      });
+      setProvisioned({
+        email: created.email,
+        password: addUser.password,
+        role: created.role,
+        partner: created.partner_id == null ? "all" : String(created.partner_id),
+      });
+      setAddUser({ name: "", email: "", phone: "", password: "", role: "viewer", partner_id: "" });
+      setShowAddUser(false);
+      await loadUsers();
+    } catch (e) {
+      setUsersError(apiErrorMessage(e));
+    }
+  };
+
+  const saveUser = async (id: string) => {    setUsersError("");
     try {
       await updateTalkoUser(id, {
         role: editRole,
@@ -285,7 +326,56 @@ export default function PartnersPage() {
         </Card>
       )}
 
-      <h3 className="mb-2 mt-8 text-sm font-extrabold text-navy">Users & roles</h3>
+      <div className="mb-2 mt-8 flex items-center justify-between">
+        <h3 className="text-sm font-extrabold text-navy">Users & roles</h3>
+        <Button size="sm" onClick={() => { setProvisioned(null); setShowAddUser((v) => !v); }}>
+          {showAddUser ? "Close" : "Add user"}
+        </Button>
+      </div>
+      {provisioned && (
+        <Card className="mb-3 space-y-1.5 p-4 text-[13px]">
+          <p className="font-bold text-navy">Account ready — share these credentials with the partner:</p>
+          <p className="font-mono">email: {provisioned.email}</p>
+          <p className="font-mono">password: {provisioned.password}</p>
+          <p className="text-slate/70">role: {provisioned.role} · partner: {provisioned.partner}</p>
+          <p className="text-[11px] text-slate/60">Password is shown only here — it cannot be retrieved later.</p>
+        </Card>
+      )}
+      {showAddUser && (
+        <Card className="mb-3 grid gap-3 p-4 sm:grid-cols-3">
+          <div>
+            <Label>Full name</Label>
+            <Input value={addUser.name} onChange={(e) => setAddUser({ ...addUser, name: e.target.value })} className="h-9" />
+          </div>
+          <div>
+            <Label>Email (login)</Label>
+            <Input value={addUser.email} onChange={(e) => setAddUser({ ...addUser, email: e.target.value })} className="h-9" />
+          </div>
+          <div>
+            <Label>Phone</Label>
+            <Input value={addUser.phone} onChange={(e) => setAddUser({ ...addUser, phone: e.target.value })} className="h-9" />
+          </div>
+          <div>
+            <Label>Password</Label>
+            <Input type="password" value={addUser.password} onChange={(e) => setAddUser({ ...addUser, password: e.target.value })} className="h-9" />
+          </div>
+          <div>
+            <Label>Role</Label>
+            <select value={addUser.role} onChange={(e) => setAddUser({ ...addUser, role: e.target.value })} className="h-9 w-full rounded-lg border border-navy/15 bg-white px-2 text-sm outline-none">
+              {["viewer", "maintainer", "superadmin"].map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label>Partner ID</Label>
+            <Input value={addUser.partner_id} onChange={(e) => setAddUser({ ...addUser, partner_id: e.target.value })} placeholder="empty = all (superadmin)" className="h-9" />
+          </div>
+          <div className="sm:col-span-3">
+            <Button size="sm" onClick={() => void provisionUser()}>Create login</Button>
+          </div>
+        </Card>
+      )}
       <Card className="overflow-x-auto p-0">
         {usersError && <p className="p-4 text-xs font-medium text-brick">{usersError}</p>}
         <table className="w-full min-w-[640px] text-left text-[13px]">

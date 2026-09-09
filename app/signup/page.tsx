@@ -13,7 +13,6 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [partnerId, setPartnerId] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
@@ -50,20 +49,15 @@ export default function SignupPage() {
       setError("Passwords do not match");
       return;
     }
-    const pid = partnerId.trim() ? Number(partnerId.trim()) : undefined;
-    if (partnerId.trim() && !Number.isFinite(pid)) {
-      setError("Partner ID must be numeric");
-      return;
-    }
     setBusy(true);
     try {
-      // Console signup returns the user, not a token — log in right after.
+      // No partner asked: later accounts activate as pending; a superadmin
+      // assigns role + partner (Partners → Users table).
       await signupWithAccount({
         name: name.trim(),
         email: email.trim(),
         phone_number: phone.trim(),
         password,
-        ...(pid != null ? { partner_id: pid } : {}),
       });
       const cred = await loginWithAccount(email.trim(), password);
       if (cred.token) {
@@ -110,10 +104,6 @@ export default function SignupPage() {
               <Label>Phone (+E.164)</Label>
               <Input autoComplete="tel" placeholder="+919889560593" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-10" />
             </div>
-          </div>
-          <div>
-            <Label>Partner ID <span className="font-normal text-slate/60">(optional)</span></Label>
-            <Input placeholder="e.g. 2" value={partnerId} onChange={(e) => setPartnerId(e.target.value)} className="h-10" />
           </div>
           <div className="grid gap-3.5 sm:grid-cols-2">
             <div>

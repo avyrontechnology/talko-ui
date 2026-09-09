@@ -2,13 +2,12 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { KeyRound, Fingerprint, ShieldCheck, PhoneCall, BarChart3, Plug2, UserRound } from "lucide-react";
+import { ShieldCheck, PhoneCall, BarChart3, Plug2 } from "lucide-react";
 import { Button, Card, Input, Label } from "@/components/ui";
 import { useAuthStore } from "@/store/auth-store";
 import { talkoConfig } from "@/lib/config";
-import { isAccountAuthConfigured, loginWithAccount } from "@/lib/auth-service";
+import { loginWithAccount } from "@/lib/auth-service";
 import { fetchAuthContext } from "@/lib/services";
-import { cn } from "@/lib/utils";
 
 const HIGHLIGHTS = [
   { icon: PhoneCall, title: "Voice operations", desc: "Place, monitor, hang up and transfer calls" },
@@ -20,64 +19,41 @@ function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const expired = search.get("expired");
-  const [mode, setMode] = useState<"apiKey" | "jwt" | "account">(
-    isAccountAuthConfigured() ? "account" : "apiKey",
-  );
-  const [credential, setCredential] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [partnerId, setPartnerId] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const loginWithApiKey = useAuthStore((s) => s.loginWithApiKey);
   const loginWithToken = useAuthStore((s) => s.loginWithToken);
+  const loginWithApiKey = useAuthStore((s) => s.loginWithApiKey);
   const setSuperadmin = useAuthStore((s) => s.setSuperadmin);
-  const accountAuth = isAccountAuthConfigured();
-
-  const resolveContext = async () => {
-    try {
-      const ctx = await fetchAuthContext();
-      setSuperadmin(ctx.is_superadmin);
-    } catch {
-      setSuperadmin(null);
-    }
-  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (mode === "account") {
-      if (!username.trim() || !password) {
-        setError("Username and password are required");
-        return;
-      }
-      setBusy(true);
-      try {
-        const cred = await loginWithAccount(username.trim(), password);
-        if (cred.token) {
-          loginWithToken(cred.token, { partnerId });
-          await resolveContext();
-        } else if (cred.apiKey) {
-          loginWithApiKey(cred.apiKey, { partnerId });
+    if (!username.trim() || !password) {
+      setError("Username and password are required");
+      return;
+    }
+    setBusy(true);
+    try {
+      const cred = await loginWithAccount(username.trim(), password);
+      if (cred.token) {
+        loginWithToken(cred.token, {});
+        try {
+          const ctx = await fetchAuthContext();
+          setSuperadmin(ctx.is_superadmin);
+        } catch {
+          setSuperadmin(null);
         }
-        router.replace("/dashboard");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Sign in failed");
-      } finally {
-        setBusy(false);
+      } else if (cred.apiKey) {
+        loginWithApiKey(cred.apiKey, {});
       }
-      return;
+      router.replace("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed");
+    } finally {
+      setBusy(false);
     }
-    if (!credential.trim()) {
-      setError(mode === "apiKey" ? "API key is required" : "Bearer token is required");
-      return;
-    }
-    if (mode === "apiKey") loginWithApiKey(credential, { partnerId });
-    else {
-      loginWithToken(credential, { partnerId });
-      void resolveContext();
-    }
-    router.replace("/dashboard");
   };
 
   return (
@@ -149,72 +125,27 @@ function LoginForm() {
             </p>
           )}
 
-          <div className="mb-4 mt-5 grid grid-cols-2 gap-1 rounded-xl bg-navy/[0.07] p-1 text-sm">
-            {(
-              [
-                ...(accountAuth
-                  ? [{ id: "account", label: "Account", icon: UserRound } as const]
-                  : []),
-                { id: "apiKey", label: "API Key", icon: KeyRound },
-                { id: "jwt", label: "Bearer Token", icon: Fingerprint },
-              ] as const
-            ).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setMode(t.id)}
-                className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 font-semibold cursor-pointer",
-                  mode === t.id ? "bg-white text-navy shadow-sm" : "text-slate/60 hover:text-navy",
-                )}
-              >
-                <t.icon size={14} />
-                {t.label}
-              </button>
-            ))}
-          </div>
-
           <form onSubmit={submit} className="space-y-3.5">
-            {mode === "account" ? (
-              <>
-                <div>
-                  <Label>Username</Label>
-                  <Input
-                    autoComplete="username"
-                    placeholder="you@company.com"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="h-10"
-                  />
-                </div>
-                <div>
-                  <Label>Password</Label>
-                  <Input
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-10"
-                  />
-                </div>
-              </>
-            ) : (
             <div>
-              <Label>{mode === "apiKey" ? "API Key  ·  sent as API-KEY header" : "JWT  ·  sent as Authorization: Bearer"}</Label>
+              <Label>Username</Label>
               <Input
-                type="password"
-                autoComplete="off"
-                placeholder={mode === "apiKey" ? "tkp_live_…" : "eyJ…"}
-                value={credential}
-                onChange={(e) => setCredential(e.target.value)}
-                className="h-10 font-mono"
+                autoComplete="username"
+                placeholder="you@company.com"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="h-10"
               />
             </div>
-            )}
             <div>
-              <Label>Partner ID <span className="font-normal text-slate/60">(default filter scope)</span></Label>
-              <Input placeholder="e.g. 2" value={partnerId} onChange={(e) => setPartnerId(e.target.value)} className="h-10" />
+              <Label>Password</Label>
+              <Input
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-10"
+              />
             </div>
             {error && <p className="text-xs font-medium text-brick">{error}</p>}
             <Button type="submit" size="lg" className="w-full font-bold" disabled={busy}>
@@ -222,21 +153,18 @@ function LoginForm() {
             </Button>
           </form>
 
-          {accountAuth && (
-            <p className="mt-4 text-center text-xs text-slate/70">
-              New here?{" "}
-              <a href="/signup" className="font-semibold text-navy underline">
-                Create an account
-              </a>
-            </p>
-          )}
+          <p className="mt-4 text-center text-xs text-slate/70">
+            New here?{" "}
+            <a href="/signup" className="font-semibold text-navy underline">
+              Create an account
+            </a>
+          </p>
 
           <div className="mt-5 flex items-start gap-2 rounded-lg bg-mist p-3 text-[11px] leading-relaxed text-slate/80">
             <ShieldCheck size={15} className="mt-px shrink-0 text-navy" />
             <p>
-              Credentials never leave your browser except as request headers to{" "}
-              <code className="font-mono text-navy">{talkoConfig.apiBaseUrl}</code>.
-              Manage keys under <span className="font-semibold">API Keys</span> once signed in.
+              Your account determines your scope: partner users see their own
+              partner, superadmins can switch across all partners.
             </p>
           </div>
         </Card>

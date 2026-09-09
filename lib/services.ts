@@ -41,6 +41,8 @@ export interface TalkoUser {
 }
 
 export const fetchTalkoUsers = () => getData<TalkoUser[]>(endpoints.authUsers);
+export const createTalkoUser = (body: { name: string; email: string; phone?: string; password: string; role?: string; partner_id?: number | null }) =>
+  postData<TalkoUser>(endpoints.authUsers, body);
 export const updateTalkoUser = (id: string, body: { role?: string; partner_id?: number | null; is_active?: boolean }) =>
   patchData<TalkoUser>(endpoints.authUserById(id), body);
 export const fetchHealth = () => getData<HealthResponse>(endpoints.health);
