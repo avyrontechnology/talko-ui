@@ -6,6 +6,7 @@ import {
   Activity,
   BarChart3,
   BookUser,
+  Building2,
   KeyRound,
   LayoutDashboard,
   ListOrdered,
@@ -75,7 +76,22 @@ export function Sidebar() {
   const logout = useAuthStore((s) => s.logout);
   const authMode = useAuthStore((s) => s.authMode);
   const partnerId = useAuthStore((s) => s.partnerId);
+  const isSuperadmin = useAuthStore((s) => s.isSuperadmin);
   const [collapsed, setCollapsed] = useState(false);
+
+  const groups =
+    isSuperadmin === true
+      ? [
+          ...NAV.slice(0, 1),
+          {
+            section: "Administration",
+            items: [
+              { href: "/partners", label: "Partners", icon: Building2, blurb: "Onboard partners, issue keys" },
+            ],
+          },
+          ...NAV.slice(1),
+        ]
+      : NAV;
 
   return (
     <aside
@@ -105,7 +121,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="slim-scroll flex-1 overflow-y-auto px-2.5 py-3">
-        {NAV.map((group) => (
+        {groups.map((group) => (
           <div key={group.section} className="mb-4">
             {!collapsed && (
               <p className="mb-1.5 px-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
