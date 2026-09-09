@@ -94,7 +94,7 @@ export default function SignupPage() {
         </div>
         <h2 className="text-xl font-extrabold tracking-tight text-navy">Create account</h2>
         <p className="mt-1 text-[13px] text-slate/70">
-          Superadmin access is granted to ADMIN-role console users; everyone else is scoped to their own partner.
+          The first account ever created becomes superadmin; everyone after that is scoped to their own partner.
         </p>
         <form onSubmit={submit} className="mt-5 space-y-3.5">
           <div>
