@@ -1,17 +1,46 @@
 /**
- * Username/password auth against the external auth service.
+ * Username/password auth against the console auth service.
  *
- * talkoConfig.authLoginUrl points at the service's login endpoint which
- * accepts POST { username, password } and returns { token } or { apiKey }
- * (optionally wrapped in a { data } envelope). Signup posts to the sibling
- * /signup endpoint; if the service uses a different shape, adjust here —
- * callers only depend on the normalized AccountCredential below.
+ * talkoConfig.authLoginUrl points at the console auth surface: either the
+ * login endpoint itself (.../do_login) or its base (do_login/do_signup are
+ * appended). Login posts { credential, password } + ?svc_name=... and
+ * returns { status, data: { access_token } }. Signup posts the console
+ * UserData shape and returns the created user (no token) — callers log in
+ * right after. Callers only depend on AccountCredential / SignupPayload.
  */
 import { talkoConfig } from "./config";
 
 export interface AccountCredential {
   token?: string;
   apiKey?: string;
+}
+
+export interface SignupPayload {
+  name: string;
+  email: string;
+  phone_number: string;
+  password: string;
+  partner_id?: number;
+}
+
+function stripTrailingSlashes(url: string): string {
+  return url.replace(/\/+$/, "");
+}
+
+function loginUrl(): string {
+  const base = stripTrailingSlashes(talkoConfig.authLoginUrl);
+  return /\/do_login$/.test(base) ? base : `${base}/do_login`;
+}
+
+function signupEndpointUrl(): string {
+  const base = stripTrailingSlashes(talkoConfig.authLoginUrl);
+  if (/\/do_login$/.test(base)) return base.replace(/\/do_login$/, "/do_signup");
+  if (/\/do_signup$/.test(base)) return base;
+  return `${base}/do_signup`;
+}
+
+function svcName(): string {
+  return process.env.NEXT_PUBLIC_AUTH_SVC_NAME ?? "console";
 }
 
 function normalizeCredential(payload: unknown): AccountCredential {
@@ -23,14 +52,15 @@ function normalizeCredential(payload: unknown): AccountCredential {
     typeof (payload as { data: unknown }).data === "object"
       ? ((payload as { data: Record<string, unknown> }).data as Record<string, unknown>)
       : (payload as Record<string, unknown>);
-  const token =
-    typeof root?.token === "string" && root.token ? root.token : undefined;
-  const apiKey =
-    typeof root?.apiKey === "string" && root.apiKey
-      ? root.apiKey
-      : typeof root?.api_key === "string" && root.api_key
-        ? (root.api_key as string)
-        : undefined;
+  const pick = (...keys: string[]): string | undefined => {
+    for (const key of keys) {
+      const value = root?.[key];
+      if (typeof value === "string" && value) return value;
+    }
+    return undefined;
+  };
+  const token = pick("token", "access_token");
+  const apiKey = pick("apiKey", "api_key");
   if (!token && !apiKey) throw new Error("Auth service returned no token or API key");
   return { token, apiKey };
 }
@@ -42,8 +72,17 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Auth request failed (${res.status})`);
+    let detail = "";
+    try {
+      const errBody = (await res.json()) as Record<string, unknown>;
+      detail =
+        (typeof errBody?.detail === "string" && errBody.detail) ||
+        (typeof errBody?.message === "string" && errBody.message) ||
+        "";
+    } catch {
+      /* non-JSON error */
+    }
+    throw new Error(detail || `Auth request failed (${res.status})`);
   }
   return (await res.json()) as T;
 }
@@ -52,28 +91,24 @@ export function isAccountAuthConfigured(): boolean {
   return Boolean(talkoConfig.authLoginUrl);
 }
 
-function signupUrl(): string {
-  const base = talkoConfig.authLoginUrl.replace(/\/+$/, "");
-  // .../login -> .../signup when the login path ends that way, else append.
-  return /\/login\/?$/.test(talkoConfig.authLoginUrl)
-    ? base.replace(/\/login\/?$/, "/signup")
-    : `${base}/signup`;
-}
-
 export async function loginWithAccount(
   username: string,
   password: string,
 ): Promise<AccountCredential> {
+  const url = `${loginUrl()}?svc_name=${encodeURIComponent(svcName())}`;
   return normalizeCredential(
-    await postJson(talkoConfig.authLoginUrl, { username, password }),
+    await postJson(url, { credential: username, password }),
   );
 }
 
 export async function signupWithAccount(
-  username: string,
-  password: string,
-): Promise<AccountCredential> {
-  return normalizeCredential(
-    await postJson(signupUrl(), { username, password }),
-  );
+  payload: SignupPayload,
+): Promise<void> {
+  await postJson(signupEndpointUrl(), {
+    name: payload.name,
+    email: payload.email,
+    phone_number: payload.phone_number,
+    password: payload.password,
+    ...(payload.partner_id != null ? { partner_id: payload.partner_id } : {}),
+  });
 }

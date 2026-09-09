@@ -20,7 +20,9 @@ function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const expired = search.get("expired");
-  const [mode, setMode] = useState<"apiKey" | "jwt" | "account">("apiKey");
+  const [mode, setMode] = useState<"apiKey" | "jwt" | "account">(
+    isAccountAuthConfigured() ? "account" : "apiKey",
+  );
   const [credential, setCredential] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -150,11 +152,11 @@ function LoginForm() {
           <div className="mb-4 mt-5 grid grid-cols-2 gap-1 rounded-xl bg-navy/[0.07] p-1 text-sm">
             {(
               [
-                { id: "apiKey", label: "API Key", icon: KeyRound },
-                { id: "jwt", label: "Bearer Token", icon: Fingerprint },
                 ...(accountAuth
                   ? [{ id: "account", label: "Account", icon: UserRound } as const]
                   : []),
+                { id: "apiKey", label: "API Key", icon: KeyRound },
+                { id: "jwt", label: "Bearer Token", icon: Fingerprint },
               ] as const
             ).map((t) => (
               <button

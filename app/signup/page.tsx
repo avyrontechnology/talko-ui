@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { Button, Card, Input, Label } from "@/components/ui";
 import { useAuthStore } from "@/store/auth-store";
 import { talkoConfig } from "@/lib/config";
-import { isAccountAuthConfigured, signupWithAccount } from "@/lib/auth-service";
+import { isAccountAuthConfigured, loginWithAccount, signupWithAccount } from "@/lib/auth-service";
 import { fetchAuthContext } from "@/lib/services";
 
 export default function SignupPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [partnerId, setPartnerId] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
@@ -39,17 +42,30 @@ export default function SignupPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!username.trim() || !password) {
-      setError("Username and password are required");
+    if (!name.trim() || !email.trim() || !phone.trim() || !password) {
+      setError("Name, email, phone and password are required");
       return;
     }
     if (password !== confirm) {
       setError("Passwords do not match");
       return;
     }
+    const pid = partnerId.trim() ? Number(partnerId.trim()) : undefined;
+    if (partnerId.trim() && !Number.isFinite(pid)) {
+      setError("Partner ID must be numeric");
+      return;
+    }
     setBusy(true);
     try {
-      const cred = await signupWithAccount(username.trim(), password);
+      // Console signup returns the user, not a token — log in right after.
+      await signupWithAccount({
+        name: name.trim(),
+        email: email.trim(),
+        phone_number: phone.trim(),
+        password,
+        ...(pid != null ? { partner_id: pid } : {}),
+      });
+      const cred = await loginWithAccount(email.trim(), password);
       if (cred.token) {
         loginWithToken(cred.token, {});
         try {
@@ -82,16 +98,32 @@ export default function SignupPage() {
         </p>
         <form onSubmit={submit} className="mt-5 space-y-3.5">
           <div>
-            <Label>Username</Label>
-            <Input autoComplete="username" placeholder="you@company.com" value={username} onChange={(e) => setUsername(e.target.value)} className="h-10" />
+            <Label>Full name</Label>
+            <Input autoComplete="name" placeholder="Aarav Sharma" value={name} onChange={(e) => setName(e.target.value)} className="h-10" />
+          </div>
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <div>
+              <Label>Email</Label>
+              <Input autoComplete="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-10" />
+            </div>
+            <div>
+              <Label>Phone (+E.164)</Label>
+              <Input autoComplete="tel" placeholder="+919889560593" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-10" />
+            </div>
           </div>
           <div>
-            <Label>Password</Label>
-            <Input type="password" autoComplete="new-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="h-10" />
+            <Label>Partner ID <span className="font-normal text-slate/60">(optional)</span></Label>
+            <Input placeholder="e.g. 2" value={partnerId} onChange={(e) => setPartnerId(e.target.value)} className="h-10" />
           </div>
-          <div>
-            <Label>Confirm password</Label>
-            <Input type="password" autoComplete="new-password" placeholder="••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-10" />
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <div>
+              <Label>Password</Label>
+              <Input type="password" autoComplete="new-password" placeholder="8+ chars, upper/lower/digit/special" value={password} onChange={(e) => setPassword(e.target.value)} className="h-10" />
+            </div>
+            <div>
+              <Label>Confirm password</Label>
+              <Input type="password" autoComplete="new-password" placeholder="••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-10" />
+            </div>
           </div>
           {error && <p className="text-xs font-medium text-brick">{error}</p>}
           <Button type="submit" size="lg" className="w-full font-bold" disabled={busy}>
