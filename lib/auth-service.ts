@@ -29,14 +29,19 @@ function stripTrailingSlashes(url: string): string {
 
 function loginUrl(): string {
   const base = stripTrailingSlashes(talkoConfig.authLoginUrl);
-  return /\/do_login$/.test(base) ? base : `${base}/do_login`;
+  // Console style (.../do_login) passes through; Talko style appends /login.
+  if (/\/do_login$/.test(base) || /\/login$/.test(base)) return base;
+  return `${base}/login`;
 }
 
 function signupEndpointUrl(): string {
   const base = stripTrailingSlashes(talkoConfig.authLoginUrl);
+  // Console style (.../do_login -> .../do_signup) passes through;
+  // Talko style (.../login -> .../signup, base -> base/signup).
   if (/\/do_login$/.test(base)) return base.replace(/\/do_login$/, "/do_signup");
   if (/\/do_signup$/.test(base)) return base;
-  return `${base}/do_signup`;
+  if (/\/login$/.test(base)) return base.replace(/\/login$/, "/signup");
+  return `${base}/signup`;
 }
 
 function svcName(): string {
