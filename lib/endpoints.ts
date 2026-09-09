@@ -8,6 +8,10 @@ export const endpoints = {
   // Auth context (who-am-I: auth type, scope, superadmin flag)
   authContext: "/auth/context",
 
+  // Talko-native user auth + management
+  authUsers: "/auth/users",
+  authUserById: (id: string) => `/auth/users/${id}`,
+
   // Calls
   callCreate: "/call",
   callHangup: "/call/hangup",

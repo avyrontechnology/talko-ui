@@ -29,6 +29,20 @@ export interface AuthContext {
 }
 
 export const fetchAuthContext = () => getData<AuthContext>(endpoints.authContext);
+
+export interface TalkoUser {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string | null;
+  role: string;
+  partner_id?: number | null;
+  is_active: boolean;
+}
+
+export const fetchTalkoUsers = () => getData<TalkoUser[]>(endpoints.authUsers);
+export const updateTalkoUser = (id: string, body: { role?: string; partner_id?: number | null; is_active?: boolean }) =>
+  patchData<TalkoUser>(endpoints.authUserById(id), body);
 export const fetchHealth = () => getData<HealthResponse>(endpoints.health);
 
 /* ---------- Calls ---------- */

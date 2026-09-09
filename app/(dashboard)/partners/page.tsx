@@ -8,8 +8,11 @@ import { PageHeader, ErrorBox } from "@/components/page";
 import {
   createApiKey,
   createPartnerConfig,
+  fetchTalkoUsers,
   fetchVendorConfigs,
   fetchVendors,
+  updateTalkoUser,
+  type TalkoUser,
 } from "@/lib/services";
 import { apiErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
@@ -40,12 +43,43 @@ export default function PartnersPage() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [users, setUsers] = useState<TalkoUser[]>([]);
+  const [usersError, setUsersError] = useState("");
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [editRole, setEditRole] = useState("viewer");
+  const [editPartner, setEditPartner] = useState("");
+  const [editActive, setEditActive] = useState(true);
 
   useEffect(() => {
     if (isSuperadmin !== true) return;
     fetchVendors().then(setVendors).catch(() => {});
     fetchVendorConfigs().then(setVendorConfigs).catch(() => {});
+    loadUsers();
   }, [isSuperadmin]);
+
+  const loadUsers = async () => {
+    setUsersError("");
+    try {
+      setUsers(await fetchTalkoUsers());
+    } catch (e) {
+      setUsersError(apiErrorMessage(e));
+    }
+  };
+
+  const saveUser = async (id: string) => {
+    setUsersError("");
+    try {
+      await updateTalkoUser(id, {
+        role: editRole,
+        partner_id: editPartner.trim() ? Number(editPartner.trim()) : null,
+        is_active: editActive,
+      });
+      setEditingUser(null);
+      await loadUsers();
+    } catch (e) {
+      setUsersError(apiErrorMessage(e));
+    }
+  };
 
   if (isSuperadmin === false) {
     return (
@@ -250,6 +284,80 @@ export default function PartnersPage() {
           </div>
         </Card>
       )}
+
+      <h3 className="mb-2 mt-8 text-sm font-extrabold text-navy">Users & roles</h3>
+      <Card className="overflow-x-auto p-0">
+        {usersError && <p className="p-4 text-xs font-medium text-brick">{usersError}</p>}
+        <table className="w-full min-w-[640px] text-left text-[13px]">
+          <thead>
+            <tr className="border-b border-navy/10 text-[11px] uppercase tracking-wide text-slate/60">
+              <th className="px-4 py-2.5">Email</th>
+              <th className="px-4 py-2.5">Name</th>
+              <th className="px-4 py-2.5">Role</th>
+              <th className="px-4 py-2.5">Partner</th>
+              <th className="px-4 py-2.5">Active</th>
+              <th className="px-4 py-2.5" />
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} className="border-b border-navy/5 last:border-0">
+                <td className="px-4 py-2 font-mono text-xs">{u.email}</td>
+                <td className="px-4 py-2">{u.name}</td>
+                <td className="px-4 py-2">
+                  {editingUser === u.id ? (
+                    <select value={editRole} onChange={(e) => setEditRole(e.target.value)} className="h-8 rounded-md border border-navy/15 bg-white px-1 text-xs outline-none">
+                      {["viewer", "maintainer", "superadmin"].map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Badge>{u.role}</Badge>
+                  )}
+                </td>
+                <td className="px-4 py-2">
+                  {editingUser === u.id ? (
+                    <Input value={editPartner} onChange={(e) => setEditPartner(e.target.value)} placeholder="null = all" className="h-8 w-24" />
+                  ) : (
+                    <span className="font-mono text-xs">{u.partner_id ?? "all"}</span>
+                  )}
+                </td>
+                <td className="px-4 py-2">
+                  {editingUser === u.id ? (
+                    <input type="checkbox" checked={editActive} onChange={(e) => setEditActive(e.target.checked)} className="h-4 w-4 accent-[#f74737]" />
+                  ) : (
+                    u.is_active ? "yes" : "no"
+                  )}
+                </td>
+                <td className="px-4 py-2 text-right">
+                  {editingUser === u.id ? (
+                    <span className="flex justify-end gap-1.5">
+                      <Button size="sm" onClick={() => void saveUser(u.id)}>Save</Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingUser(u.id);
+                        setEditRole(u.role);
+                        setEditPartner(u.partner_id == null ? "" : String(u.partner_id));
+                        setEditActive(u.is_active);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {users.length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-4 text-xs text-slate/60">No users yet — the first signup becomes superadmin.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
     </div>
   );
 }
