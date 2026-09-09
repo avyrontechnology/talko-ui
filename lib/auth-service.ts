@@ -100,7 +100,12 @@ export async function loginWithAccount(
   username: string,
   password: string,
 ): Promise<AccountCredential> {
-  const url = `${loginUrl()}?svc_name=${encodeURIComponent(svcName())}`;
+  // svc_name is a console-ism: only send it to console-style endpoints.
+  // Talko's own /auth/login takes { credential, password } and nothing else.
+  const base = loginUrl();
+  const url = base.endsWith("/do_login")
+    ? `${base}?svc_name=${encodeURIComponent(svcName())}`
+    : base;
   return normalizeCredential(
     await postJson(url, { credential: username, password }),
   );
