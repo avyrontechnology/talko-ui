@@ -6,9 +6,11 @@ import { Button, Card, Input, Label, Textarea } from "@/components/ui";
 import { PageHeader, ErrorBox, EmptyState } from "@/components/page";
 import { createVendorConfig, fetchVendorConfigs, updateVendorConfig } from "@/lib/services";
 import { apiErrorMessage } from "@/lib/api-client";
+import { useAuthStore } from "@/store/auth-store";
 import type { VendorConfig } from "@/lib/types";
 
 export default function VendorConfigsPage() {
+  const isSuperadmin = useAuthStore((s) => s.isSuperadmin);
   const [rows, setRows] = useState<VendorConfig[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -64,6 +66,12 @@ export default function VendorConfigsPage() {
   return (
     <div>
       <PageHeader title="Vendor Configs" subtitle="POST/GET/PATCH /vendor_configs" icon={Settings2} actions={<Button size="sm" variant="outline" onClick={load}>Refresh</Button>} />
+      {isSuperadmin === false ? (
+        <Card className="mt-4 p-6 text-sm text-slate/70">
+          Vendor configs are limited to superadmins. Sign in with a superadmin account.
+        </Card>
+      ) : (
+      <>
       {error && <div className="mb-3"><ErrorBox message={error} /></div>}
       <Card className="mb-3 p-4">
         <h2 className="mb-2 font-medium">Create vendor config</h2>
@@ -100,6 +108,8 @@ export default function VendorConfigsPage() {
             </Card>
           ))}
         </div>
+      )}
+      </>
       )}
     </div>
   );

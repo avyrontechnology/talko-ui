@@ -16,6 +16,8 @@ interface AuthState {
   label: string;
   /** Resolved from GET /auth/context after JWT login; null = unknown. */
   isSuperadmin: boolean | null;
+  /** Talko-native role (superadmin/maintainer/viewer); null = unknown. */
+  role: string | null;
   /** Superadmin cross-partner scope; sent as X-Partner-Scope (JWT only). */
   scopedPartnerId: string | null;
   _hasHydrated: boolean;
@@ -24,6 +26,7 @@ interface AuthState {
   logout: () => void;
   setHydrated: () => void;
   setSuperadmin: (value: boolean | null) => void;
+  setRole: (value: string | null) => void;
   setScope: (partnerId: string | null) => void;
 }
 
@@ -36,6 +39,7 @@ export const useAuthStore = create<AuthState>()(
       partnerId: "",
       label: "",
       isSuperadmin: null,
+      role: null,
       scopedPartnerId: null,
       _hasHydrated: false,
       loginWithToken: (token, opts) =>
@@ -46,6 +50,7 @@ export const useAuthStore = create<AuthState>()(
           partnerId: opts?.partnerId ?? "",
           label: opts?.label ?? "",
           isSuperadmin: null,
+          role: null,
           scopedPartnerId: null,
         }),
       loginWithApiKey: (apiKey, opts) =>
@@ -56,6 +61,7 @@ export const useAuthStore = create<AuthState>()(
           partnerId: opts?.partnerId ?? "",
           label: opts?.label ?? "",
           isSuperadmin: false,
+          role: null,
           scopedPartnerId: null,
         }),
       logout: () =>
@@ -66,10 +72,12 @@ export const useAuthStore = create<AuthState>()(
           partnerId: "",
           label: "",
           isSuperadmin: null,
+          role: null,
           scopedPartnerId: null,
         }),
       setHydrated: () => set({ _hasHydrated: true }),
       setSuperadmin: (value) => set({ isSuperadmin: value }),
+      setRole: (value) => set({ role: value }),
       setScope: (partnerId) =>
         set({ scopedPartnerId: partnerId, partnerId: partnerId ?? "" }),
     }),
@@ -82,6 +90,7 @@ export const useAuthStore = create<AuthState>()(
         partnerId: s.partnerId,
         label: s.label,
         isSuperadmin: s.isSuperadmin,
+        role: s.role,
         scopedPartnerId: s.scopedPartnerId,
       }),
       onRehydrateStorage: () => (state) => {

@@ -127,7 +127,7 @@ export default function PartnersPage() {
       <div>
         <PageHeader title="Partners" subtitle="Onboard and manage partners" icon={Building2} />
         <Card className="mt-4 p-6 text-sm text-slate/70">
-          Partner onboarding is limited to superadmins. Sign in with an ADMIN-role console account.
+          Partner onboarding is limited to superadmins. Sign in with a superadmin account.
         </Card>
       </div>
     );

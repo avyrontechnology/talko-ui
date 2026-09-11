@@ -7,7 +7,7 @@ import { Bell, ChevronRight, Command, Search } from "lucide-react";
 import { talkoConfig } from "@/lib/config";
 import { useAuthStore } from "@/store/auth-store";
 import { ScopeSwitcher } from "./scope-switcher";
-import { NAV_INDEX } from "./sidebar";
+import { NAV_INDEX, effectiveNavRole, filterNavByRole } from "./sidebar";
 
 function hostOf(url: string): string {
   try {
@@ -20,6 +20,10 @@ function hostOf(url: string): string {
 export function Topbar() {
   const pathname = usePathname();
   const partnerId = useAuthStore((s) => s.partnerId);
+  const navRole = effectiveNavRole(
+    useAuthStore((s) => s.isSuperadmin),
+    useAuthStore((s) => s.role),
+  );
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -31,10 +35,16 @@ export function Topbar() {
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return NAV_INDEX.filter(
-      (n) => n.label.toLowerCase().includes(q) || n.blurb.toLowerCase().includes(q),
-    ).slice(0, 6);
-  }, [query]);
+    const visible =
+      navRole === null
+        ? NAV_INDEX
+        : filterNavByRole([{ section: "all", items: NAV_INDEX }], navRole)[0]?.items ?? [];
+    return visible
+      .filter(
+        (n) => n.label.toLowerCase().includes(q) || n.blurb.toLowerCase().includes(q),
+      )
+      .slice(0, 6);
+  }, [query, navRole]);
 
   return (
     <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-navy/10 bg-white/85 px-5 backdrop-blur">

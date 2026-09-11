@@ -29,7 +29,38 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import { talkoConfig } from "@/lib/config";
 
-const NAV: { section: string; items: { href: string; label: string; icon: React.ElementType; blurb: string }[] }[] = [
+export type NavRole = "superadmin" | "maintainer" | "viewer";
+
+export interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  blurb: string;
+  /** Roles allowed to see this item; omitted = all roles. */
+  roles?: NavRole[];
+}
+
+export interface NavGroup {
+  section: string;
+  items: NavItem[];
+}
+
+/**
+ * Resolve the effective nav role. API-key sessions and role-less JWT
+ * sessions default to maintainer (partner admin); unknown sessions
+ * (role not resolved yet) return null = show everything.
+ */
+export function effectiveNavRole(
+  isSuperadmin: boolean | null,
+  role: string | null,
+): NavRole | null {
+  if (isSuperadmin === true) return "superadmin";
+  if (role === "superadmin" || role === "maintainer" || role === "viewer") return role;
+  if (isSuperadmin === false) return "maintainer";
+  return null;
+}
+
+const NAV: NavGroup[] = [
   {
     section: "Overview",
     items: [
@@ -44,31 +75,42 @@ const NAV: { section: string; items: { href: string; label: string; icon: React.
       { href: "/calls", label: "Calls", icon: PhoneCall, blurb: "Place, hang up, transfer" },
       { href: "/cdr", label: "CDR & History", icon: FileClock, blurb: "Call logs and dispositions" },
       { href: "/call-records", label: "Call Records", icon: BookUser, blurb: "Manual record keeping" },
-      { href: "/dialer", label: "Dialer", icon: Radio, blurb: "Lead lists and campaigns" },
+      { href: "/dialer", label: "Dialer", icon: Radio, blurb: "Lead lists and campaigns", roles: ["superadmin", "maintainer"] },
       { href: "/dids", label: "DIDs", icon: ListOrdered, blurb: "Inventory and AI binding" },
     ],
   },
   {
     section: "Configuration",
     items: [
-      { href: "/vendors", label: "Vendors", icon: Database, blurb: "Telephony providers" },
-      { href: "/vendor-configs", label: "Vendor Configs", icon: Settings2, blurb: "Endpoints and handlers" },
-      { href: "/partner-configs", label: "Partner Configs", icon: Users, blurb: "Vendor wiring per partner" },
-      { href: "/agent-mapping", label: "Agent Mapping", icon: PhoneForwarded, blurb: "Agents to DIDs and boards" },
-      { href: "/custom-fields", label: "Custom Fields", icon: Tags, blurb: "CDR extensions" },
+      { href: "/vendors", label: "Vendors", icon: Database, blurb: "Telephony providers", roles: ["superadmin"] },
+      { href: "/vendor-configs", label: "Vendor Configs", icon: Settings2, blurb: "Endpoints and handlers", roles: ["superadmin"] },
+      { href: "/partner-configs", label: "Partner Configs", icon: Users, blurb: "Vendor wiring per partner", roles: ["superadmin"] },
+      { href: "/agent-mapping", label: "Agent Mapping", icon: PhoneForwarded, blurb: "Agents to DIDs and boards", roles: ["superadmin", "maintainer"] },
+      { href: "/custom-fields", label: "Custom Fields", icon: Tags, blurb: "CDR extensions", roles: ["superadmin", "maintainer"] },
     ],
   },
   {
     section: "Integrations",
     items: [
-      { href: "/api-keys", label: "API Keys", icon: KeyRound, blurb: "Issue and revoke keys" },
-      { href: "/webhooks", label: "Webhooks", icon: Plug2, blurb: "Delivery configs and logs" },
-      { href: "/assets", label: "Assets", icon: Activity, blurb: "Call and digital assets" },
+      { href: "/api-keys", label: "API Keys", icon: KeyRound, blurb: "Issue and revoke keys", roles: ["superadmin", "maintainer"] },
+      { href: "/webhooks", label: "Webhooks", icon: Plug2, blurb: "Delivery configs and logs", roles: ["superadmin", "maintainer"] },
+      { href: "/assets", label: "Assets", icon: Activity, blurb: "Call and digital assets", roles: ["superadmin", "maintainer"] },
     ],
   },
 ];
 
 export const NAV_INDEX = NAV.flatMap((g) => g.items);
+
+/** Filter nav groups to what `role` may see; null role = everything. */
+export function filterNavByRole(groups: NavGroup[], role: NavRole | null): NavGroup[] {
+  if (role === null) return groups;
+  return groups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((i) => !i.roles || i.roles.includes(role)),
+    }))
+    .filter((g) => g.items.length > 0);
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -77,21 +119,24 @@ export function Sidebar() {
   const authMode = useAuthStore((s) => s.authMode);
   const partnerId = useAuthStore((s) => s.partnerId);
   const isSuperadmin = useAuthStore((s) => s.isSuperadmin);
+  const role = useAuthStore((s) => s.role);
   const [collapsed, setCollapsed] = useState(false);
 
-  const groups =
-    isSuperadmin === true
+  const navRole = effectiveNavRole(isSuperadmin, role);
+  const baseGroups =
+    navRole === "superadmin"
       ? [
           ...NAV.slice(0, 1),
           {
             section: "Administration",
             items: [
-              { href: "/partners", label: "Partners", icon: Building2, blurb: "Onboard partners, issue keys" },
+              { href: "/partners", label: "Partners", icon: Building2, blurb: "Onboard partners, issue keys", roles: ["superadmin"] as NavRole[] },
             ],
           },
           ...NAV.slice(1),
         ]
       : NAV;
+  const groups = filterNavByRole(baseGroups, navRole);
 
   return (
     <aside

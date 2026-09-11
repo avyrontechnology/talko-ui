@@ -26,6 +26,7 @@ export interface AuthContext {
   partner_id: number | null;
   auth_type: "jwt" | "api_key";
   is_superadmin: boolean;
+  role: string | null;
 }
 
 export const fetchAuthContext = () => getData<AuthContext>(endpoints.authContext);

@@ -11,9 +11,11 @@ import {
   fetchVendors,
 } from "@/lib/services";
 import { apiErrorMessage } from "@/lib/api-client";
+import { useAuthStore } from "@/store/auth-store";
 import type { Vendor } from "@/lib/types";
 
 export default function VendorsPage() {
+  const isSuperadmin = useAuthStore((s) => s.isSuperadmin);
   const [rows, setRows] = useState<Vendor[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,6 +64,12 @@ export default function VendorsPage() {
   return (
     <div>
       <PageHeader title="Vendors" subtitle="POST/GET /vendors · activate / deactivate" icon={Database} actions={<Button size="sm" variant="outline" onClick={load}>Refresh</Button>} />
+      {isSuperadmin === false && (
+        <Card className="mt-4 p-6 text-sm text-slate/70">
+          Vendors is limited to superadmins. Sign in with a superadmin account.
+        </Card>
+      )}
+      {isSuperadmin !== false && (<>
       {error && <div className="mb-3"><ErrorBox message={error} /></div>}
       <Card className="mb-3 flex flex-wrap items-end gap-2 p-4">
         <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tata Tele" /></div>
@@ -86,6 +94,7 @@ export default function VendorsPage() {
           </table>
         </Card>
       )}
+      </>)}
     </div>
   );
 }

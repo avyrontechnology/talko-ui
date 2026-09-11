@@ -20,6 +20,7 @@ export default function SignupPage() {
   const loginWithToken = useAuthStore((s) => s.loginWithToken);
   const loginWithApiKey = useAuthStore((s) => s.loginWithApiKey);
   const setSuperadmin = useAuthStore((s) => s.setSuperadmin);
+  const setRole = useAuthStore((s) => s.setRole);
 
   if (!isAccountAuthConfigured()) {
     return (
@@ -65,8 +66,10 @@ export default function SignupPage() {
         try {
           const ctx = await fetchAuthContext();
           setSuperadmin(ctx.is_superadmin);
+          setRole(ctx.role ?? null);
         } catch {
           setSuperadmin(null);
+          setRole(null);
         }
       } else if (cred.apiKey) {
         loginWithApiKey(cred.apiKey, {});

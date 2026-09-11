@@ -6,9 +6,12 @@ import { Badge, Button, Card, Input, Label, Textarea } from "@/components/ui";
 import { PageHeader, ErrorBox, EmptyState } from "@/components/page";
 import { createPartnerConfig, fetchPartnerConfigs, updatePartnerConfig } from "@/lib/services";
 import { apiErrorMessage } from "@/lib/api-client";
+import { useAuthStore } from "@/store/auth-store";
 import type { PartnerConfig } from "@/lib/types";
 
 export default function PartnerConfigsPage() {
+  const isSuperadmin = useAuthStore((s) => s.isSuperadmin);
+  const role = useAuthStore((s) => s.role);
   const [rows, setRows] = useState<PartnerConfig[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,9 +64,20 @@ export default function PartnerConfigsPage() {
     }
   };
 
+  // Viewers get no access; maintainers see only their own partner's
+  // wiring (the backend scopes the list), superadmins see everything.
+  const viewerBlocked = isSuperadmin === false && role === "viewer";
+
   return (
     <div>
       <PageHeader title="Partner Configs" subtitle="POST/GET/PATCH /partner_configs" icon={Users} actions={<Button size="sm" variant="outline" onClick={load}>Refresh</Button>} />
+      {viewerBlocked ? (
+        <Card className="mt-4 p-6 text-sm text-slate/70">
+          Partner configs are limited to superadmins and maintainers. Sign in with a
+          maintainer or superadmin account.
+        </Card>
+      ) : (
+      <>
       {error && <div className="mb-3"><ErrorBox message={error} /></div>}
       <Card className="mb-3 p-4">
         <h2 className="mb-2 font-medium">Create partner config</h2>
@@ -98,6 +112,8 @@ export default function PartnerConfigsPage() {
             </Card>
           ))}
         </div>
+      )}
+      </>
       )}
     </div>
   );
