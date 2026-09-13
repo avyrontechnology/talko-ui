@@ -54,13 +54,6 @@ export default function PartnersPage() {
   const [addUser, setAddUser] = useState({ name: "", email: "", phone: "", password: "", role: "viewer", partner_id: "" });
   const [provisioned, setProvisioned] = useState<{ email: string; password: string; role: string; partner: string } | null>(null);
 
-  useEffect(() => {
-    if (isSuperadmin !== true) return;
-    fetchVendors().then(setVendors).catch(() => {});
-    fetchVendorConfigs().then(setVendorConfigs).catch(() => {});
-    loadUsers();
-  }, [isSuperadmin]);
-
   const loadUsers = async () => {
     setUsersError("");
     try {
@@ -69,6 +62,14 @@ export default function PartnersPage() {
       setUsersError(apiErrorMessage(e));
     }
   };
+
+  useEffect(() => {
+    if (isSuperadmin !== true) return;
+    fetchVendors().then(setVendors).catch(() => {});
+    fetchVendorConfigs().then(setVendorConfigs).catch(() => {});
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadUsers();
+  }, [isSuperadmin]);
 
   const provisionUser = async () => {
     setUsersError("");
@@ -133,8 +134,24 @@ export default function PartnersPage() {
     );
   }
 
+  const vendorNameById = new Map(vendors.map((v) => [String(v.id), v.name]));
+
+  const vendorConfigLabel = (c: VendorConfig) => {
+    const extra = c as VendorConfig & Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+    const displayName =
+      str(c.name) ??
+      str(c.vendor_name) ??
+      str(extra["config_name"]) ??
+      str(extra["display_name"]) ??
+      str(extra["title"]);
+    const vendorName = vendorNameById.get(String(c.vendor_id)) ?? str(c.vendor_name);
+    const base = displayName ? `${displayName} (${c.id})` : String(c.id);
+    return vendorName && displayName !== vendorName ? `${base} — ${vendorName}` : base;
+  };
+
   const filteredConfigs = vendorConfigs.filter(
-    (c) => !form.vendor_id || c.vendor_id === form.vendor_id,
+    (c) => !form.vendor_id || String(c.vendor_id) === String(form.vendor_id),
   );
 
   const create = async () => {
@@ -205,7 +222,7 @@ export default function PartnersPage() {
         icon={Building2}
         actions={step > 1 && createdPartnerId != null ? <Badge>Partner {createdPartnerId}</Badge> : undefined}
       />
-      <ErrorBox message={error} />
+      {error && <ErrorBox message={error} />}
 
       <div className="mb-4 flex items-center gap-2 text-xs font-bold">
         {(["Config", "API key", "DIDs"] as const).map((label, i) => (
@@ -247,7 +264,7 @@ export default function PartnersPage() {
               >
                 <option value="">Select vendor…</option>
                 {vendors.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name ?? v.id}</option>
+                  <option key={v.id} value={v.id}>{v.name ? `${v.name} (${v.id})` : v.id}</option>
                 ))}
               </select>
             </div>
@@ -260,7 +277,7 @@ export default function PartnersPage() {
               >
                 <option value="">Select config…</option>
                 {filteredConfigs.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name ?? c.id}</option>
+                  <option key={c.id} value={c.id}>{vendorConfigLabel(c)}</option>
                 ))}
               </select>
             </div>

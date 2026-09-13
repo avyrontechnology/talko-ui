@@ -32,6 +32,7 @@ export function PageHeader({
 }
 
 export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  if (!message) return null;
   return (
     <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-ember/30 bg-ember/[0.07] p-3.5 text-sm text-brick">
       <AlertTriangle size={17} className="mt-0.5 shrink-0" />
