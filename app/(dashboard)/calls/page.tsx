@@ -17,7 +17,7 @@ export default function CallsPage() {
   const [create, setCreate] = useState({
     entity_type: "Lead",
     entity_id: "",
-    service_board_id: "",
+    workspace_id: "",
     agent_number: "",
     to_number: "",
     partner_id: defaultPartner,
@@ -72,8 +72,8 @@ export default function CallsPage() {
               <Input value={create.entity_id} onChange={(e) => setCreate({ ...create, entity_id: e.target.value })} placeholder="entity_123" />
             </div>
             <div>
-              <Label>Service board ID</Label>
-              <Input value={create.service_board_id} onChange={(e) => setCreate({ ...create, service_board_id: e.target.value })} placeholder="12" />
+              <Label>Workspace ID</Label>
+              <Input value={create.workspace_id} onChange={(e) => setCreate({ ...create, workspace_id: e.target.value })} placeholder="12" />
             </div>
             <div>
               <Label>Partner ID</Label>
@@ -117,7 +117,7 @@ export default function CallsPage() {
                 createCall({
                   entity_type: create.entity_type as "Lead" | "Contact",
                   entity_id: create.entity_id || undefined,
-                  service_board_id: create.service_board_id ? Number(create.service_board_id) : undefined,
+                  workspace_id: create.workspace_id ? Number(create.workspace_id) : undefined,
                   partner_id: create.partner_id ? Number(create.partner_id) : undefined,
                   agent_number: create.enable_ai_bridge ? undefined : create.agent_number || undefined,
                   to_number: create.to_number || undefined,

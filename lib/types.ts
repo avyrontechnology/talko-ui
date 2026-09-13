@@ -13,7 +13,7 @@ export interface CallCreatePayload {
   entity_type: EntityType;
   entity_id?: string;
   entity_name?: string;
-  service_board_id?: number;
+  workspace_id?: number;
   partner_id?: number;
   agent_number?: string;
   to_number?: string;
@@ -78,7 +78,7 @@ export type AnalyticsType =
   | "agent_call_analytics"
   | "total_agent_talk_time"
   | "agent_talk_time_distribution"
-  | "partner_service_board"
+  | "partner_workspace"
   | "dashboard_call_trends";
 
 export type TrendMetric =
@@ -128,8 +128,8 @@ export interface PartnerConfig {
   is_active?: boolean;
   enable_round_robin?: boolean;
   enable_agent_mapping?: boolean;
-  enable_service_board?: boolean;
-  service_board_ids?: number[];
+  enable_workspace?: boolean;
+  workspace_ids?: number[];
   dialer_enabled?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -147,7 +147,7 @@ export interface DidRecord {
   did_number: string;
   status: DidStatus;
   partner_id?: number | null;
-  service_board_id?: number | null;
+  workspace_id?: number | null;
   agent_id?: string | null;
   vendor_id?: string;
   spam_count?: number;
@@ -161,7 +161,7 @@ export interface AgentMapping {
   id: string;
   agent_id: string;
   partner_id: number;
-  service_board_id?: number;
+  workspace_id?: number;
   agent_number?: string;
   is_active?: boolean;
   did?: string[];

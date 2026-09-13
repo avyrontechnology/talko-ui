@@ -4,7 +4,7 @@ import { useState } from "react";
 import { PhoneForwarded } from "lucide-react";
 import { Badge, Button, Card, Input, Label } from "@/components/ui";
 import { PageHeader, ErrorBox, EmptyState } from "@/components/page";
-import { createAgentMapping, createBoardMapping, fetchAgentMappings, fetchBoardAgents } from "@/lib/services";
+import { createAgentMapping, createWorkspaceMapping, fetchAgentMappings, fetchWorkspaceAgents } from "@/lib/services";
 import { apiErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
 import type { AgentMapping } from "@/lib/types";
@@ -16,7 +16,7 @@ export default function AgentMappingPage() {
   const [loading, setLoading] = useState(false);
   const [agentId, setAgentId] = useState("");
   const [partnerId, setPartnerId] = useState(defaultPartner);
-  const [boardForm, setBoardForm] = useState({ service_board_id: "", agent_id: "", agent_number: "" });
+  const [workspaceForm, setWorkspaceForm] = useState({ workspace_id: "", agent_id: "", agent_number: "" });
 
   const load = async () => {
     setLoading(true);
@@ -40,16 +40,16 @@ export default function AgentMappingPage() {
     }
   };
 
-  const createBoard = async () => {
+  const handleCreateWorkspaceMapping = async () => {
     setError("");
     try {
-      await createBoardMapping({
+      await createWorkspaceMapping({
         partner_id: Number(partnerId),
-        service_board_id: Number(boardForm.service_board_id),
-        agent_id: boardForm.agent_id,
-        agent_number: boardForm.agent_number || undefined,
+        workspace_id: Number(workspaceForm.workspace_id),
+        agent_id: workspaceForm.agent_id,
+        agent_number: workspaceForm.agent_number || undefined,
       });
-      const data = await fetchBoardAgents({ service_board_id: boardForm.service_board_id, partner_id: partnerId });
+      const data = await fetchWorkspaceAgents({ workspace_id: workspaceForm.workspace_id, partner_id: partnerId });
       setRows(data);
     } catch (e) {
       setError(apiErrorMessage(e));
@@ -58,7 +58,7 @@ export default function AgentMappingPage() {
 
   return (
     <div>
-      <PageHeader title="Agent Mapping" subtitle="Agent→DID and agent→board mappings" icon={PhoneForwarded} actions={<Button size="sm" onClick={load} disabled={loading}>Search</Button>} />
+      <PageHeader title="Agent Mapping" subtitle="Agent→DID and agent→workspace mappings" icon={PhoneForwarded} actions={<Button size="sm" onClick={load} disabled={loading}>Search</Button>} />
       {error && <div className="mb-3"><ErrorBox message={error} /></div>}
       <div className="mb-3 grid gap-3 lg:grid-cols-2">
         <Card className="p-4">
@@ -72,13 +72,13 @@ export default function AgentMappingPage() {
           </div>
         </Card>
         <Card className="p-4">
-          <h2 className="mb-2 font-medium">Agent → board mapping</h2>
+          <h2 className="mb-2 font-medium">Agent → workspace mapping</h2>
           <div className="grid grid-cols-3 gap-2">
-            <div><Label>Board ID</Label><Input value={boardForm.service_board_id} onChange={(e) => setBoardForm({ ...boardForm, service_board_id: e.target.value })} /></div>
-            <div><Label>Agent ID</Label><Input value={boardForm.agent_id} onChange={(e) => setBoardForm({ ...boardForm, agent_id: e.target.value })} /></div>
-            <div><Label>Agent number</Label><Input value={boardForm.agent_number} onChange={(e) => setBoardForm({ ...boardForm, agent_number: e.target.value })} /></div>
+            <div><Label>Workspace ID</Label><Input value={workspaceForm.workspace_id} onChange={(e) => setWorkspaceForm({ ...workspaceForm, workspace_id: e.target.value })} /></div>
+            <div><Label>Agent ID</Label><Input value={workspaceForm.agent_id} onChange={(e) => setWorkspaceForm({ ...workspaceForm, agent_id: e.target.value })} /></div>
+            <div><Label>Agent number</Label><Input value={workspaceForm.agent_number} onChange={(e) => setWorkspaceForm({ ...workspaceForm, agent_number: e.target.value })} /></div>
           </div>
-          <Button size="sm" variant="outline" className="mt-2" onClick={createBoard} disabled={!boardForm.service_board_id || !boardForm.agent_id || !partnerId}>Map to board</Button>
+          <Button size="sm" variant="outline" className="mt-2" onClick={handleCreateWorkspaceMapping} disabled={!workspaceForm.workspace_id || !workspaceForm.agent_id || !partnerId}>Map to workspace</Button>
         </Card>
       </div>
       {rows.length === 0 ? <EmptyState message="No mappings. Search above." /> : (
@@ -91,7 +91,7 @@ export default function AgentMappingPage() {
                   <td className="px-3 py-2 font-mono text-xs">{r.id}</td>
                   <td className="px-3 py-2">{r.agent_id}</td>
                   <td className="px-3 py-2">{r.partner_id}</td>
-                  <td className="px-3 py-2">{r.service_board_id ?? "—"}</td>
+                  <td className="px-3 py-2">{r.workspace_id ?? "—"}</td>
                   <td className="px-3 py-2">{r.agent_number ?? (r.did ?? []).join(", ") ?? "—"}</td>
                   <td className="px-3 py-2"><Badge tone={r.is_active ? "green" : "zinc"}>{String(r.is_active ?? "—")}</Badge></td>
                 </tr>

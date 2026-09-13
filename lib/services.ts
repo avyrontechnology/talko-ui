@@ -110,8 +110,8 @@ export const uploadDialerLeads = (
 ) => postData(endpoints.dialerBulkLeads(listId), body);
 
 /* ---------- DIDs ---------- */
-export const fetchDidsByBoard = (service_board_id: string | number) =>
-  getData(endpoints.didsByBoard, { params: { service_board_id } });
+export const fetchDidsByWorkspace = (workspace_id: string | number) =>
+  getData(endpoints.didsByWorkspace, { params: { workspace_id } });
 export const fetchAvailableDids = () => getData(endpoints.didsAvailable);
 export const assignDids = (body: unknown) => postData(endpoints.didsAssign, body);
 export const unassignDids = (did_numbers: string[]) =>
@@ -119,7 +119,7 @@ export const unassignDids = (did_numbers: string[]) =>
 export const updateDidStatus = (body: {
   did_numbers: string[];
   action: string;
-  service_board_id?: number;
+  workspace_id?: number;
   agent_id?: string;
 }) => patchData(endpoints.didsStatusUpdate, body);
 export const fetchDidList = (params: Record<string, string | number>) =>
@@ -172,15 +172,15 @@ export const fetchAgentMappings = (params?: { agent_id?: string; partner_id?: st
   getData<AgentMapping[]>(endpoints.agentMapping, { params });
 export const createAgentMapping = (body: { agent_id: string; partner_id: number }) =>
   postData(endpoints.agentMapping, body);
-export const createBoardMapping = (body: {
+export const createWorkspaceMapping = (body: {
   partner_id: number;
-  service_board_id: number;
+  workspace_id: number;
   agent_id: string;
   agent_number?: string;
   is_active?: boolean;
-}) => postData(endpoints.agentBoardMapping, body);
-export const fetchBoardAgents = (params: { service_board_id: string | number; partner_id: string | number }) =>
-  getData<AgentMapping[]>(endpoints.agentBoardMapping, { params });
+}) => postData(endpoints.agentWorkspaceMapping, body);
+export const fetchWorkspaceAgents = (params: { workspace_id: string | number; partner_id: string | number }) =>
+  getData<AgentMapping[]>(endpoints.agentWorkspaceMapping, { params });
 
 /* ---------- Custom fields ---------- */
 export const fetchCustomFields = (entity_type = "TalkoCDR") =>

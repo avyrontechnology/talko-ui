@@ -23,7 +23,7 @@ const TYPES: AnalyticsType[] = [
   "agent_call_analytics",
   "total_agent_talk_time",
   "agent_talk_time_distribution",
-  "partner_service_board",
+  "partner_workspace",
   "dashboard_call_trends",
 ];
 
@@ -96,7 +96,7 @@ export default function AnalyticsPage() {
         if (!Number.isNaN(f) && !Number.isNaN(t)) payload.time_range = `${f}-${t}`;
       }
       if (agents.trim()) payload.agents = agents.split(",").map((s) => s.trim()).filter(Boolean);
-      if (boards.trim()) payload.service_board_id = boards.split(",").map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n));
+      if (boards.trim()) payload.workspace_id = boards.split(",").map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n));
       if (analyticsType === "dashboard_call_trends") {
         payload.metric_filter = metric;
         payload.trend_basis = basis;
@@ -155,7 +155,7 @@ export default function AnalyticsPage() {
             <Input value={agents} onChange={(e) => setAgents(e.target.value)} placeholder="agent_1, agent_2" />
           </div>
           <div>
-            <Label>Service board IDs (comma separated)</Label>
+            <Label>Workspace IDs (comma separated)</Label>
             <Input value={boards} onChange={(e) => setBoards(e.target.value)} placeholder="12, 34" />
           </div>
           {analyticsType === "dashboard_call_trends" && (

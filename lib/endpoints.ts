@@ -37,7 +37,7 @@ export const endpoints = {
   dialerBulkLeads: (listId: string) => `/dialer/lead-lists/${listId}/leads`,
 
   // DIDs
-  didsByBoard: "/dids/by-service-board",
+  didsByWorkspace: "/dids/by-workspace",
   didsAvailable: "/dids/available-for-assignment",
   didsAssign: "/dids/assign-did-numbers",
   didsUnassign: "/dids/unassign-did-numbers",
@@ -65,7 +65,7 @@ export const endpoints = {
 
   // Agent mapping
   agentMapping: "/call_agent_mapping",
-  agentBoardMapping: "/call_agent_mapping/service-board-mapping",
+  agentWorkspaceMapping: "/call_agent_mapping/workspace-mapping",
 
   // Custom fields
   customFields: "/custom-fields",

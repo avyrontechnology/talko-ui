@@ -15,7 +15,7 @@ export default function PartnerConfigsPage() {
   const [rows, setRows] = useState<PartnerConfig[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ partner_id: "", vendor_id: "", vendor_config_id: "", service_board_ids: "" });
+  const [form, setForm] = useState({ partner_id: "", vendor_id: "", vendor_config_id: "", workspace_ids: "" });
   const [editing, setEditing] = useState<string | null>(null);
   const [editJson, setEditJson] = useState("{}");
 
@@ -44,9 +44,9 @@ export default function PartnerConfigsPage() {
         partner_id: Number(form.partner_id),
         vendor_id: form.vendor_id,
         vendor_config_id: form.vendor_config_id,
-        service_board_ids: form.service_board_ids.split(",").map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n)),
+        workspace_ids: form.workspace_ids.split(",").map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n)),
       });
-      setForm({ partner_id: "", vendor_id: "", vendor_config_id: "", service_board_ids: "" });
+      setForm({ partner_id: "", vendor_id: "", vendor_config_id: "", workspace_ids: "" });
       await load();
     } catch (e) {
       setError(apiErrorMessage(e));
@@ -85,7 +85,7 @@ export default function PartnerConfigsPage() {
           <div><Label>Partner ID *</Label><Input value={form.partner_id} onChange={(e) => setForm({ ...form, partner_id: e.target.value })} /></div>
           <div><Label>Vendor ID *</Label><Input value={form.vendor_id} onChange={(e) => setForm({ ...form, vendor_id: e.target.value })} /></div>
           <div><Label>Vendor config ID *</Label><Input value={form.vendor_config_id} onChange={(e) => setForm({ ...form, vendor_config_id: e.target.value })} /></div>
-          <div><Label>Service board IDs</Label><Input value={form.service_board_ids} onChange={(e) => setForm({ ...form, service_board_ids: e.target.value })} placeholder="12, 34" /></div>
+          <div><Label>Workspace IDs</Label><Input value={form.workspace_ids} onChange={(e) => setForm({ ...form, workspace_ids: e.target.value })} placeholder="12, 34" /></div>
         </div>
         <Button size="sm" className="mt-2" onClick={create} disabled={!form.partner_id || !form.vendor_id || !form.vendor_config_id}>Create</Button>
       </Card>

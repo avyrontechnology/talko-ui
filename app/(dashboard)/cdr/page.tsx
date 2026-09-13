@@ -29,7 +29,7 @@ export default function CdrPage() {
   const limit = 20;
   const [entityType, setEntityType] = useState("Lead");
   const [entityIds, setEntityIds] = useState("");
-  const [serviceBoardId, setServiceBoardId] = useState("");
+  const [workspaceId, setWorkspaceId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [callType, setCallType] = useState("");
@@ -62,7 +62,7 @@ export default function CdrPage() {
           entity_type: entityType,
           entity_id: entityIds.split(",")[0].trim(),
         };
-        if (serviceBoardId) payload.service_board_id = Number(serviceBoardId);
+        if (workspaceId) payload.workspace_id = Number(workspaceId);
         if (from && to) payload.time_range = `${new Date(from).getTime()}-${new Date(to).getTime()}`;
         if (callType) payload.call_type = callType;
         const data = await fetchCallHistory({ offset, limit, payload: JSON.stringify(payload) });
@@ -74,7 +74,7 @@ export default function CdrPage() {
     } finally {
       setLoading(false);
     }
-  }, [tab, offset, entityType, entityIds, serviceBoardId, from, to, callType]);
+  }, [tab, offset, entityType, entityIds, workspaceId, from, to, callType]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -124,8 +124,8 @@ export default function CdrPage() {
           {tab === "history" && (
             <>
               <div>
-                <Label>Service board ID</Label>
-                <Input value={serviceBoardId} onChange={(e) => setServiceBoardId(e.target.value)} />
+                <Label>Workspace ID</Label>
+                <Input value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} />
               </div>
               <div>
                 <Label>Call type</Label>

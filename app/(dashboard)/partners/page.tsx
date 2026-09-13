@@ -32,10 +32,10 @@ export default function PartnersPage() {
     vendor_id: "",
     vendor_config_id: "",
     ai_vendor_config_id: "",
-    service_board_ids: "",
+    workspace_ids: "",
     enable_round_robin: false,
     enable_agent_mapping: false,
-    enable_service_board: false,
+    enable_workspace: false,
     dialer_enabled: false,
   });
   const [keyLabel, setKeyLabel] = useState("onboarding");
@@ -170,9 +170,9 @@ export default function PartnersPage() {
         ...(form.ai_vendor_config_id ? { ai_vendor_config_id: form.ai_vendor_config_id } : {}),
         enable_round_robin: form.enable_round_robin,
         enable_agent_mapping: form.enable_agent_mapping,
-        enable_service_board: form.enable_service_board,
+        enable_workspace: form.enable_workspace,
         dialer_enabled: form.dialer_enabled,
-        service_board_ids: form.service_board_ids
+        workspace_ids: form.workspace_ids
           .split(",")
           .map((s) => Number(s.trim()))
           .filter((n) => Number.isFinite(n)),
@@ -202,7 +202,7 @@ export default function PartnersPage() {
     }
   };
 
-  const flag = (key: "enable_round_robin" | "enable_agent_mapping" | "enable_service_board" | "dialer_enabled") => (
+  const flag = (key: "enable_round_robin" | "enable_agent_mapping" | "enable_workspace" | "dialer_enabled") => (
     <label className="flex items-center gap-2 text-[13px] text-navy">
       <input
         type="checkbox"
@@ -252,8 +252,8 @@ export default function PartnersPage() {
               <Input value={form.partner_id} onChange={(e) => setForm({ ...form, partner_id: e.target.value })} placeholder="e.g. 9" className="h-10" />
             </div>
             <div>
-              <Label>Service board IDs (CSV)</Label>
-              <Input value={form.service_board_ids} onChange={(e) => setForm({ ...form, service_board_ids: e.target.value })} placeholder="6" className="h-10" />
+              <Label>Workspace IDs (CSV)</Label>
+              <Input value={form.workspace_ids} onChange={(e) => setForm({ ...form, workspace_ids: e.target.value })} placeholder="6" className="h-10" />
             </div>
             <div>
               <Label>Vendor</Label>
@@ -289,7 +289,7 @@ export default function PartnersPage() {
           <div className="grid gap-2 sm:grid-cols-2">
             {flag("enable_round_robin")}
             {flag("enable_agent_mapping")}
-            {flag("enable_service_board")}
+            {flag("enable_workspace")}
             {flag("dialer_enabled")}
           </div>
           <Button onClick={create} disabled={busy} size="lg" className="font-bold">

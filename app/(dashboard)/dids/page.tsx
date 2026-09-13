@@ -9,7 +9,7 @@ import {
   assignDids,
   fetchAiAvailableDids,
   fetchDidList,
-  fetchDidsByBoard,
+  fetchDidsByWorkspace,
   releaseAiAgentDid,
   unassignDids,
   updateDidStatus,
@@ -26,10 +26,10 @@ export default function DidsPage() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
-  const [boardId, setBoardId] = useState("");
+  const [workspaceId, setWorkspaceId] = useState("");
   const [didFilter, setDidFilter] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  const [assignJson, setAssignJson] = useState('{"dids_for_service_board": []}');
+  const [assignJson, setAssignJson] = useState('{"dids_for_workspace": []}');
   const [aiForm, setAiForm] = useState({ partner_id: defaultPartner, agent_bot_id: "", did_number: "" });
   const [aiDids, setAiDids] = useState<string[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
@@ -55,7 +55,7 @@ export default function DidsPage() {
     try {
       const params: Record<string, string | number> = { page: 1, limit: 50 };
       if (status) params.status = status;
-      if (boardId) params.service_board_id = boardId;
+      if (workspaceId) params.workspace_id = workspaceId;
       if (didFilter) params.did_number = didFilter;
       const data = await fetchDidList(params);
       setRows(data.dids ?? []);
@@ -106,10 +106,10 @@ export default function DidsPage() {
       <Card className="mb-3 p-4">
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <div><Label>Status</Label><Select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">Any</option><option value="available">available</option><option value="mapped">mapped</option><option value="cooling_period">cooling_period</option><option value="cooldown_completed">cooldown_completed</option></Select></div>
-          <div><Label>Service board ID</Label><Input value={boardId} onChange={(e) => setBoardId(e.target.value)} /></div>
+          <div><Label>Workspace ID</Label><Input value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} /></div>
           <div><Label>DID number</Label><Input value={didFilter} onChange={(e) => setDidFilter(e.target.value)} /></div>
           <div className="flex items-end gap-2">
-            <Button size="sm" variant="outline" onClick={() => boardId && act(() => fetchDidsByBoard(boardId), "Loaded board DIDs — see response in table refresh")}>By board</Button>
+            <Button size="sm" variant="outline" onClick={() => workspaceId && act(() => fetchDidsByWorkspace(workspaceId), "Loaded workspace DIDs — see response in table refresh")}>By workspace</Button>
             <Button size="sm" variant="outline" onClick={() => act(async () => { const d = await fetchAiAvailableDids(aiForm.partner_id || defaultPartner || "0"); setRows([]); setMsg(JSON.stringify(d).slice(0, 500)); }, "Fetched AI-available DIDs")}>AI free</Button>
           </div>
         </div>
@@ -135,7 +135,7 @@ export default function DidsPage() {
                   <td className="px-3 py-2 font-mono text-xs">{d.did_number}</td>
                   <td className="px-3 py-2"><Badge tone={d.status === "available" ? "green" : d.status === "mapped" ? "blue" : "amber"}>{d.status}</Badge></td>
                   <td className="px-3 py-2">{d.partner_id ?? "—"}</td>
-                  <td className="px-3 py-2">{d.service_board_id ?? "—"}</td>
+                  <td className="px-3 py-2">{d.workspace_id ?? "—"}</td>
                   <td className="px-3 py-2">{d.agent_id ?? "—"}</td>
                 </tr>
               ))}
