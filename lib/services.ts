@@ -130,7 +130,7 @@ export const fetchDidList = (params: Record<string, string | number>) =>
 export const fetchDidStatusMeta = () => getData(endpoints.didsStatusMeta);
 export const assignAiAgentDid = (body: {
   partner_id: number;
-  agent_bot_id: string;
+  agent_bot_id?: string | number;
   did_number?: string;
 }) => postData(endpoints.didsAssignAi, body);
 export const releaseAiAgentDid = (body: { partner_id: number; agent_bot_id: string }) =>

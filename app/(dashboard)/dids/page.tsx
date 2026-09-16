@@ -176,13 +176,25 @@ export default function DidsPage() {
         </Card>
         <Card className="p-4">
           <h2 className="mb-2 font-medium">AI-agent DID bind / release</h2>
+          <p className="mb-2 text-xs text-zinc-500">
+            VoiceAI/engine-routed: DID + Partner only (agent comes from the engine Numbers UI).
+            makun-ai campaign DIDs still use Agent bot ID.
+          </p>
           <div className="grid grid-cols-2 gap-2">
             <div><Label>Partner ID</Label><Input value={aiForm.partner_id} onChange={(e) => setAiForm({ ...aiForm, partner_id: e.target.value })} /></div>
-            <div><Label>Agent bot ID</Label><Input value={aiForm.agent_bot_id} onChange={(e) => setAiForm({ ...aiForm, agent_bot_id: e.target.value })} /></div>
+            <div><Label>Agent bot ID (optional — empty = VoiceAI)</Label><Input value={aiForm.agent_bot_id} placeholder="empty for VoiceAI" onChange={(e) => setAiForm({ ...aiForm, agent_bot_id: e.target.value })} /></div>
             <div className="col-span-2"><Label>DID (optional for assign)</Label><Input value={aiForm.did_number} onChange={(e) => setAiForm({ ...aiForm, did_number: e.target.value })} /></div>
           </div>
           <div className="mt-2 flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => act(() => assignAiAgentDid({ partner_id: Number(aiForm.partner_id), agent_bot_id: aiForm.agent_bot_id, did_number: aiForm.did_number || undefined }), "AI DID assigned")}>Assign AI DID</Button>
+            <Button size="sm" variant="outline" onClick={() => act(() => {
+              const body: { partner_id: number; did_number?: string; agent_bot_id?: number } = {
+                partner_id: Number(aiForm.partner_id),
+              };
+              if (aiForm.did_number) body.did_number = aiForm.did_number;
+              // Empty = partner-only VoiceAI path (backend leaves agent_bot_id=0).
+              if (aiForm.agent_bot_id !== "") body.agent_bot_id = Number(aiForm.agent_bot_id);
+              return assignAiAgentDid(body);
+            }, "AI DID assigned")}>Assign AI DID</Button>
             <Button size="sm" variant="outline" onClick={() => act(() => releaseAiAgentDid({ partner_id: Number(aiForm.partner_id), agent_bot_id: aiForm.agent_bot_id }), "AI DID released")}>Release</Button>
           </div>
         </Card>
