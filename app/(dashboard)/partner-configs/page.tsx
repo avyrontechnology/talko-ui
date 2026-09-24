@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Users } from "lucide-react";
-import { Badge, Button, Card, Input, Label, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
 import { PageHeader, ErrorBox, EmptyState } from "@/components/page";
-import { createPartnerConfig, fetchPartnerConfigs, updatePartnerConfig } from "@/lib/services";
+import { createPartnerConfig, fetchClients, fetchPartnerConfigs, updatePartnerConfig } from "@/lib/services";
 import { apiErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
-import type { PartnerConfig } from "@/lib/types";
+import type { ClientItem, PartnerConfig } from "@/lib/types";
 
 export default function PartnerConfigsPage() {
   const isSuperadmin = useAuthStore((s) => s.isSuperadmin);
@@ -18,6 +18,24 @@ export default function PartnerConfigsPage() {
   const [form, setForm] = useState({ partner_id: "", client_id: "", vendor_id: "", vendor_config_id: "", workspace_ids: "" });
   const [editing, setEditing] = useState<string | null>(null);
   const [editJson, setEditJson] = useState("{}");
+  const [clients, setClients] = useState<ClientItem[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+
+  const loadClients = async (partnerId: string) => {
+    const pid = partnerId.trim();
+    if (!pid) {
+      setClients([]);
+      return;
+    }
+    setClientsLoading(true);
+    try {
+      setClients(await fetchClients(pid));
+    } catch {
+      setClients([]);
+    } finally {
+      setClientsLoading(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -54,6 +72,25 @@ export default function PartnerConfigsPage() {
     }
   };
 
+  const setEditClient = (clientId: string) => {
+    try {
+      const obj = JSON.parse(editJson) as Record<string, unknown>;
+      if (!clientId) delete obj.client_id;
+      else obj.client_id = clientId;
+      setEditJson(JSON.stringify(obj, null, 2));
+    } catch {
+      // invalid JSON — leave untouched, Save will surface the parse error
+    }
+  };
+
+  const editClientId = (() => {
+    try {
+      const obj = JSON.parse(editJson) as Record<string, unknown>;
+      return typeof obj.client_id === "string" ? obj.client_id : "";
+    } catch {
+      return "";
+    }
+  })();
   const saveEdit = async () => {
     if (!editing) return;
     try {
@@ -83,8 +120,17 @@ export default function PartnerConfigsPage() {
       <Card className="mb-3 p-4">
         <h2 className="mb-2 font-medium">Create partner config</h2>
         <div className="grid gap-2 md:grid-cols-5">
-          <div><Label>Partner ID *</Label><Input value={form.partner_id} onChange={(e) => setForm({ ...form, partner_id: e.target.value })} /></div>
-          <div><Label>Client ID (optional)</Label><Input value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} placeholder="empty = partner-level" /></div>
+          <div><Label>Partner ID *</Label><Input value={form.partner_id} onChange={(e) => { setForm({ ...form, partner_id: e.target.value, client_id: "" }); void loadClients(e.target.value); }} /></div>
+          <div>
+            <Label>Client (optional)</Label>
+            <Select value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })}>
+              <option value="">— partner-level (no client) —</option>
+              {clients.map((cl) => (
+                <option key={cl.id} value={cl.id}>{cl.name} ({cl.id.slice(-6)})</option>
+              ))}
+            </Select>
+            {clientsLoading && <p className="mt-1 text-xs text-zinc-400">Loading clients…</p>}
+          </div>
           <div><Label>Vendor ID *</Label><Input value={form.vendor_id} onChange={(e) => setForm({ ...form, vendor_id: e.target.value })} /></div>
           <div><Label>Vendor config ID *</Label><Input value={form.vendor_config_id} onChange={(e) => setForm({ ...form, vendor_config_id: e.target.value })} /></div>
           <div><Label>Workspace IDs</Label><Input value={form.workspace_ids} onChange={(e) => setForm({ ...form, workspace_ids: e.target.value })} placeholder="12, 34" /></div>
@@ -110,10 +156,22 @@ export default function PartnerConfigsPage() {
                     {" · "}dialer {String(c.dialer_enabled ?? false)}
                   </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => { setEditing(c.id); setEditJson(JSON.stringify(c, null, 2)); }}>Edit JSON</Button>
+                <Button size="sm" variant="outline" onClick={() => { setEditing(c.id); setEditJson(JSON.stringify(c, null, 2)); void loadClients(String(c.partner_id)); }}>Edit JSON</Button>
               </div>
               {editing === c.id && (
                 <div className="mt-2">
+                  <div className="mb-2 flex flex-wrap items-end gap-2">
+                    <div>
+                      <Label>Client</Label>
+                      <Select value={editClientId} onChange={(e) => setEditClient(e.target.value)}>
+                        <option value="">— partner-level (no client) —</option>
+                        {clients.map((cl) => (
+                          <option key={cl.id} value={cl.id}>{cl.name} ({cl.id.slice(-6)})</option>
+                        ))}
+                      </Select>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => void loadClients(String(c.partner_id))}>Reload clients</Button>
+                  </div>
                   <Textarea rows={12} value={editJson} onChange={(e) => setEditJson(e.target.value)} className="font-mono text-xs" />
                   <div className="mt-2 flex gap-2">
                     <Button size="sm" onClick={saveEdit}>Save</Button>
