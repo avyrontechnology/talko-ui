@@ -23,7 +23,7 @@ export default function ClientsPage() {
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: "", workspace_ids: "" });
+  const [form, setForm] = useState({ name: "", contact_name: "", email: "", phone: "", external_ref: "", notes: "", tags: "" });
 
   // No Partner ID field on this page by design: partner users are bound to
   // their own scope, superadmins use the global topbar scope switcher.
@@ -82,22 +82,25 @@ export default function ClientsPage() {
       setError("Client name is required");
       return;
     }
-    const workspace_ids = form.workspace_ids
+    const tags = form.tags
       .split(",")
       .map((s) => s.trim())
-      .filter(Boolean)
-      .map(Number)
-      .filter((n) => Number.isInteger(n));
+      .filter(Boolean);
     await act(
       () =>
         createClient({
           partner_id: Number(owner),
           name: form.name.trim(),
-          workspace_ids,
+          ...(form.contact_name.trim() ? { contact_name: form.contact_name.trim() } : {}),
+          ...(form.email.trim() ? { email: form.email.trim() } : {}),
+          ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
+          ...(form.external_ref.trim() ? { external_ref: form.external_ref.trim() } : {}),
+          ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
+          ...(tags.length ? { tags } : {}),
         }),
       "Client created",
     );
-    setForm({ name: "", workspace_ids: "" });
+    setForm({ name: "", contact_name: "", email: "", phone: "", external_ref: "", notes: "", tags: "" });
   };
 
   return (
@@ -131,19 +134,35 @@ export default function ClientsPage() {
               : "Showing all partners. Set a topbar scope to filter, or to create a client under one partner."}
           </p>
         )}
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid gap-2 md:grid-cols-3">
           <div>
             <Label>Client name *</Label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Acme Corp" />
           </div>
           <div>
-            <Label>Workspace IDs (comma separated)</Label>
-            <Input
-              value={form.workspace_ids}
-              onChange={(e) => setForm({ ...form, workspace_ids: e.target.value })}
-              placeholder="1, 2"
-            />
+            <Label>Contact name</Label>
+            <Input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} placeholder="Aarav" />
           </div>
+          <div>
+            <Label>Email</Label>
+            <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="ops@acme.com" />
+          </div>
+          <div>
+            <Label>Phone</Label>
+            <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="9876543210" />
+          </div>
+          <div>
+            <Label>External ref (Maglo/CRM)</Label>
+            <Input value={form.external_ref} onChange={(e) => setForm({ ...form, external_ref: e.target.value })} placeholder="MAG-123" />
+          </div>
+          <div>
+            <Label>Tags (comma separated)</Label>
+            <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="vip, retail" />
+          </div>
+        </div>
+        <div className="mt-2">
+          <Label>Notes</Label>
+          <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Ops context…" />
         </div>
         <Button size="sm" className="mt-2" onClick={create}>
           Create client{effectivePartner ? ` for partner ${effectivePartner}` : ""}
@@ -161,8 +180,8 @@ export default function ClientsPage() {
               <tr className="border-b bg-zinc-50 text-left text-xs uppercase text-zinc-500">
                 <th className="px-3 py-2">Name</th>
                 {isSuperadmin && <th className="px-3 py-2">Partner</th>}
+                <th className="px-3 py-2">Contact</th>
                 <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Workspaces</th>
                 <th className="px-3 py-2">ID</th>
                 <th className="px-3 py-2 text-right">Actions</th>
               </tr>
@@ -170,15 +189,23 @@ export default function ClientsPage() {
             <tbody>
               {rows.map((c) => (
                 <tr key={c.id} className="border-b last:border-0">
-                  <td className="px-3 py-2 font-medium">{c.name}</td>
+                  <td className="px-3 py-2">
+                    <p className="font-medium">{c.name}</p>
+                    {(c.external_ref || (c.tags ?? []).length > 0) && (
+                      <p className="font-mono text-xs text-zinc-500">
+                        {[c.external_ref, (c.tags ?? []).join(", ")].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                    {c.notes && <p className="max-w-xs truncate text-xs text-zinc-500" title={c.notes}>{c.notes}</p>}
+                  </td>
                   {isSuperadmin && <td className="px-3 py-2 font-mono text-xs">{c.partner_id}</td>}
+                  <td className="px-3 py-2 text-xs">
+                    {[c.contact_name, c.phone, c.email].filter(Boolean).join(" · ") || "—"}
+                  </td>
                   <td className="px-3 py-2">
                     <Badge tone={c.is_active ? "green" : "zinc"}>
                       {c.is_active ? "active" : "inactive"}
                     </Badge>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-xs">
-                    {(c.workspace_ids ?? []).join(", ") || "—"}
                   </td>
                   <td className="px-3 py-2 font-mono text-xs text-zinc-500">{c.id}</td>
                   <td className="px-3 py-2 text-right">

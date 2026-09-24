@@ -255,7 +255,12 @@ export interface ClientItem {
   id: string;
   partner_id: number;
   name: string;
-  workspace_ids?: number[];
+  contact_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  external_ref?: string | null;
+  notes?: string | null;
+  tags?: string[];
   is_active: boolean;
   created_at?: string;
   updated_at?: string;

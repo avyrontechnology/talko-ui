@@ -292,10 +292,29 @@ export const fetchClients = (partner_id?: string | number, active_only = false) 
       : { params: { partner_id, ...(active_only ? { active_only: true } : {}) } },
   );
 export const fetchClient = (id: string) => getData<ClientItem>(endpoints.clientById(id));
-export const createClient = (body: { partner_id: number; name: string; workspace_ids?: number[] }) =>
-  postData<ClientItem & { id: string }>(endpoints.clients, body);
-export const updateClient = (id: string, body: { name?: string; workspace_ids?: number[]; is_active?: boolean }) =>
-  patchData(endpoints.clientById(id), body);
+export const createClient = (body: {
+  partner_id: number;
+  name: string;
+  contact_name?: string;
+  email?: string;
+  phone?: string;
+  external_ref?: string;
+  notes?: string;
+  tags?: string[];
+}) => postData<ClientItem & { id: string }>(endpoints.clients, body);
+export const updateClient = (
+  id: string,
+  body: {
+    name?: string;
+    contact_name?: string;
+    email?: string;
+    phone?: string;
+    external_ref?: string;
+    notes?: string;
+    tags?: string[];
+    is_active?: boolean;
+  },
+) => patchData(endpoints.clientById(id), body);
 export const activateClient = (id: string) => patchData(endpoints.clientActivate(id));
 export const deactivateClient = (id: string) => patchData(endpoints.clientDeactivate(id));
 
