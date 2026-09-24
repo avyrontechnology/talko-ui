@@ -89,8 +89,19 @@ export async function deleteData<T>(
 export function apiErrorMessage(err: unknown, fallback = "Request failed"): string {
   if (axios.isAxiosError(err)) {
     const data = err.response?.data as
-      | { message?: string; detail?: string }
+      | { message?: unknown; detail?: unknown }
       | undefined;
+    // FastAPI 422: detail is an array like
+    // [{ loc: ["body","vendor_type"], msg: "Input should be ...", input: "acephone" }]
+    if (Array.isArray(data?.detail)) {
+      const parts = (data.detail as Array<Record<string, unknown>>).map((d) => {
+        const loc = Array.isArray(d.loc) ? d.loc.slice(1).join(".") : "";
+        const msg = typeof d.msg === "string" ? d.msg : "Invalid value";
+        const input = d.input !== undefined ? ` (got '${String(d.input)}')` : "";
+        return loc ? `${loc}: ${msg}${input}` : `${msg}${input}`;
+      });
+      if (parts.length) return parts.join("; ");
+    }
     if (typeof data?.detail === "string") return data.detail;
     if (typeof data?.message === "string") return data.message;
     if (err.message) return err.message;
