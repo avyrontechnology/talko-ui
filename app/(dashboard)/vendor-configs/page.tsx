@@ -131,12 +131,31 @@ export default function VendorConfigsPage() {
       </Card>
       {loading ? <Skeleton className="h-24" /> : rows.length === 0 ? <EmptyState message="No vendor configs." /> : (
         <div className="space-y-2">
-          {rows.map((c) => (
+          {rows.map((c) => {
+            const handlers: Array<[string, unknown]> = [
+              ["generic", c.generic_url_handler],
+              ["cdr", c.cdr_url_handler],
+              ["dialer", c.dialer_url_handler],
+              ["c2c", c.c2c_support_url_handler],
+              ["hangup", c.hangup_url_handler],
+              ["transfer", c.transfer_url_handler],
+              ["live", c.live_calls_url_handler],
+            ];
+            return (
             <Card key={c.id} className="p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="font-medium">{c.name || c.vendor_name || c.id}</p>
                   <p className="font-mono text-xs text-zinc-500">{c.id} · vendor {c.vendor_id} · {(c.available_did ?? []).length} DIDs</p>
+                  <p className="mt-1 font-mono text-xs text-zinc-500">
+                    {handlers.map(([k, v]) => `${k}:${v && Object.keys(v as object).length ? "✓" : "—"}`).join(" · ")}
+                    {c.created_at ? ` · created ${c.created_at}` : ""}
+                    {c.updated_at ? ` · updated ${c.updated_at}` : ""}
+                  </p>
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-xs text-zinc-500">View all fields</summary>
+                    <pre className="mt-1 max-h-64 overflow-auto rounded bg-zinc-50 p-2 font-mono text-xs">{JSON.stringify(c, null, 2)}</pre>
+                  </details>
                   <p className="mt-1 text-xs text-zinc-600">
                     Pool: {pools[c.id] ? (
                       <span className="font-mono">
@@ -156,7 +175,7 @@ export default function VendorConfigsPage() {
                     className="w-24"
                   />
                   <Button size="sm" variant="outline" onClick={() => savePool(c.id)}>Set pool</Button>
-                  <Button size="sm" variant="outline" onClick={() => { setEditing(c.id); setEditJson(JSON.stringify({ generic_url_handler: c.generic_url_handler ?? {} }, null, 2)); }}>
+                  <Button size="sm" variant="outline" onClick={() => { setEditing(c.id); setEditJson(JSON.stringify({ generic_url_handler: c.generic_url_handler ?? {}, cdr_url_handler: c.cdr_url_handler ?? undefined, dialer_url_handler: c.dialer_url_handler ?? undefined, c2c_support_url_handler: c.c2c_support_url_handler ?? undefined, hangup_url_handler: c.hangup_url_handler ?? undefined, transfer_url_handler: c.transfer_url_handler ?? undefined, live_calls_url_handler: c.live_calls_url_handler ?? undefined }, null, 2)); }}>
                     Edit handlers
                   </Button>
                 </div>
@@ -171,7 +190,8 @@ export default function VendorConfigsPage() {
                 </div>
               )}
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
       </>

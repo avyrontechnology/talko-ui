@@ -114,7 +114,10 @@ export interface VendorConfig {
   generic_url_handler?: Record<string, unknown>;
   cdr_url_handler?: Record<string, unknown>;
   dialer_url_handler?: Record<string, unknown>;
+  c2c_support_url_handler?: Record<string, unknown>;
+  hangup_url_handler?: Record<string, unknown>;
   transfer_url_handler?: Record<string, unknown>;
+  live_calls_url_handler?: Record<string, unknown>;
   channel_pool?: ChannelPoolConfig | null;
   created_at?: string;
   updated_at?: string;
