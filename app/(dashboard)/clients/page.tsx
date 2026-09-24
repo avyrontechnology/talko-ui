@@ -17,6 +17,7 @@ import type { ClientItem } from "@/lib/types";
 
 export default function ClientsPage() {
   const defaultPartner = useAuthStore((s) => s.partnerId);
+  const isSuperadmin = useAuthStore((s) => s.isSuperadmin);
   const [partnerId, setPartnerId] = useState(String(defaultPartner ?? ""));
   const [rows, setRows] = useState<ClientItem[]>([]);
   const [error, setError] = useState("");
@@ -24,15 +25,20 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", workspace_ids: "" });
 
-  const load = async () => {
+  // Effective owner: typed filter for superadmin, own scope otherwise.
+  const effectivePartner = isSuperadmin ? partnerId.trim() : String(defaultPartner ?? "").trim() || partnerId.trim();
+
+  const load = async (override?: string) => {
     setError("");
-    if (!partnerId.trim()) {
-      setError("Partner ID is required");
+    const pid = override ?? (isSuperadmin ? partnerId.trim() : effectivePartner);
+    if (!pid && !isSuperadmin) {
+      setError("Partner scope missing — sign in again");
       return;
     }
     setLoading(true);
     try {
-      setRows(await fetchClients(partnerId.trim()));
+      // Empty pid + superadmin = all clients.
+      setRows(await fetchClients(pid === "" ? undefined : pid));
     } catch (e) {
       setError(apiErrorMessage(e));
     } finally {
@@ -41,13 +47,16 @@ export default function ClientsPage() {
   };
 
   useEffect(() => {
-    if (defaultPartner) {
-      // Initial list for the signed-in partner scope.
+    if (isSuperadmin) {
+      // Superadmin default: all clients on mount.
+      void load("");
+    } else if (defaultPartner) {
+      // Partner scope: own clients, no Partner ID needed.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      void load();
+      void load(String(defaultPartner));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isSuperadmin]);
 
   const act = async (fn: () => Promise<unknown>, ok: string) => {
     setError("");
@@ -62,8 +71,9 @@ export default function ClientsPage() {
   };
 
   const create = async () => {
-    if (!partnerId.trim() || !form.name.trim()) {
-      setError("Partner ID + client name are required");
+    const owner = effectivePartner;
+    if (!owner || !form.name.trim()) {
+      setError(isSuperadmin ? "Partner ID + client name are required" : "Client name is required");
       return;
     }
     const workspace_ids = form.workspace_ids
@@ -75,7 +85,7 @@ export default function ClientsPage() {
     await act(
       () =>
         createClient({
-          partner_id: Number(partnerId.trim()),
+          partner_id: Number(owner),
           name: form.name.trim(),
           workspace_ids,
         }),
@@ -91,7 +101,7 @@ export default function ClientsPage() {
         subtitle="Partner-scoped sub-accounts (Phase 7 billing hooks here)"
         icon={Building2}
         actions={
-          <Button size="sm" onClick={load} disabled={loading}>
+          <Button size="sm" onClick={() => void load()} disabled={loading}>
             {loading ? "Loading…" : "Search"}
           </Button>
         }
@@ -108,11 +118,18 @@ export default function ClientsPage() {
       )}
 
       <Card className="mb-3 p-4">
-        <div className="grid gap-2 md:grid-cols-3">
-          <div>
-            <Label>Partner ID *</Label>
-            <Input value={partnerId} onChange={(e) => setPartnerId(e.target.value)} placeholder="7" />
-          </div>
+        <div className={`grid gap-2 ${isSuperadmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+          {isSuperadmin ? (
+            <div>
+              <Label>Partner ID (empty = all)</Label>
+              <Input value={partnerId} onChange={(e) => setPartnerId(e.target.value)} placeholder="empty = all" />
+            </div>
+          ) : (
+            <div>
+              <Label>Partner</Label>
+              <Input value={effectivePartner} disabled />
+            </div>
+          )}
           <div>
             <Label>Client name *</Label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Acme Corp" />
@@ -134,13 +151,14 @@ export default function ClientsPage() {
       {loading ? (
         <TableSkeleton rows={5} cols={5} />
       ) : rows.length === 0 ? (
-        <EmptyState message="No clients for this partner." hint="Create the first client above." />
+        <EmptyState message={isSuperadmin && !partnerId.trim() ? "No clients yet." : "No clients for this partner."} hint="Create the first client above." />
       ) : (
         <Card className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b bg-zinc-50 text-left text-xs uppercase text-zinc-500">
                 <th className="px-3 py-2">Name</th>
+                {isSuperadmin && <th className="px-3 py-2">Partner</th>}
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Workspaces</th>
                 <th className="px-3 py-2">ID</th>
@@ -151,6 +169,7 @@ export default function ClientsPage() {
               {rows.map((c) => (
                 <tr key={c.id} className="border-b last:border-0">
                   <td className="px-3 py-2 font-medium">{c.name}</td>
+                  {isSuperadmin && <td className="px-3 py-2 font-mono text-xs">{c.partner_id}</td>}
                   <td className="px-3 py-2">
                     <Badge tone={c.is_active ? "green" : "zinc"}>
                       {c.is_active ? "active" : "inactive"}

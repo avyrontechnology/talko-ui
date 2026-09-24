@@ -282,8 +282,15 @@ export const fetchWebhookDeliveries = (params: { partner_id: string | number; li
   getData<WebhookDelivery[]>(endpoints.webhookDeliveries, { params });
 
 /* ---------- Clients ---------- */
-export const fetchClients = (partner_id: string | number, active_only = false) =>
-  getData<ClientItem[]>(endpoints.clients, { params: { partner_id, ...(active_only ? { active_only: true } : {}) } });
+export const fetchClients = (partner_id?: string | number, active_only = false) =>
+  getData<ClientItem[]>(
+    endpoints.clients,
+    partner_id === undefined || partner_id === ""
+      ? active_only
+        ? { params: { active_only: true } }
+        : undefined
+      : { params: { partner_id, ...(active_only ? { active_only: true } : {}) } },
+  );
 export const fetchClient = (id: string) => getData<ClientItem>(endpoints.clientById(id));
 export const createClient = (body: { partner_id: number; name: string; workspace_ids?: number[] }) =>
   postData<ClientItem & { id: string }>(endpoints.clients, body);
