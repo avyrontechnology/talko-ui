@@ -1,16 +1,20 @@
-import { api, getData, postData, patchData, putData, deleteData } from "./api-client";
+import { getData, postData, patchData, putData, deleteData } from "./api-client";
 import { endpoints } from "./endpoints";
 import type {
   AgentMapping,
   ApiKeyItem,
+  BillingTransaction,
   CallCreatePayload,
   Cdr,
+  ClientItem,
   CustomField,
   DidRecord,
   HangupPayload,
   HealthResponse,
   LeadList,
+  Ledger,
   PartnerConfig,
+  RateCard,
   TransferPayload,
   Vendor,
   VendorConfig,
@@ -60,6 +64,29 @@ export const fetchCallDetails = (params: {
   call_uuid?: string;
   vendor_config_id: string;
 }) => getData(endpoints.callDetails, { params });
+export const grpcHangupCall = (body: { call_id: string; vendor_config_id?: string }) =>
+  postData(endpoints.callGrpcHangup, body);
+export const grpcTransferCall = (body: {
+  call_id: string;
+  destination_number: string;
+  vendor_config_id?: string;
+}) => postData(endpoints.callGrpcTransfer, body);
+export const grpcCallStatus = (params: { call_id: string; vendor_config_id?: string }) =>
+  getData(endpoints.callGrpcStatus, { params });
+export const startSupervise = (body: {
+  call_id: string;
+  supervisor_id: string;
+  mode?: string;
+  room_name?: string;
+}) => postData(endpoints.callSupervise, body);
+export const stopSupervise = (call_id: string) =>
+  deleteData(endpoints.callSupervise, { params: { call_id } });
+export const getSupervise = (call_id: string) =>
+  getData(endpoints.callSupervise, { params: { call_id } });
+export const attendedTransferStart = (body: { call_id: string; target_number: string }) =>
+  postData(endpoints.callAttendedStart, body);
+export const attendedTransferComplete = (params: { call_id: string; destination_number?: string }) =>
+  postData(endpoints.callAttendedComplete, null, { params });
 
 /* ---------- CDR ---------- */
 export interface CdrListParams {
@@ -139,6 +166,29 @@ export const fetchAiAvailableDids = (partner_id: string | number) =>
   getData(endpoints.didsAiAvailable, { params: { partner_id } });
 export const fetchPartnerAiDids = (params: { partner_id: string | number; agent_bot_id: string }) =>
   getData(endpoints.didsPartnerAi, { params });
+export const importExternalDids = (body: {
+  vendor_id: string;
+  vendor_config_id?: string;
+  did_numbers: string[];
+  display_name?: string;
+}) => postData(endpoints.didsExternalImport, body);
+export const provisionInternalDid = (body: {
+  parent_did_number: string;
+  partner_id: number;
+  workspace_id?: number;
+  agent_id?: number;
+  vendor_config_id?: string;
+}) => postData(endpoints.didsInternalProvision, body);
+export const mapExternalInternalDid = (body: {
+  external_did_number: string;
+  internal_did_number: string;
+  partner_id: number;
+}) => postData(endpoints.didsMapExternalInternal, body);
+export const fetchPoolUtilization = (params: { vendor_id?: string } = {}) =>
+  getData<{ utilization: { did_layer: string; status: string; count: number }[] }>(
+    endpoints.didsPoolUtilization,
+    { params },
+  );
 
 /* ---------- Vendors ---------- */
 export const fetchVendors = () => getData<Vendor[]>(endpoints.vendors);
@@ -156,6 +206,18 @@ export const createVendorConfig = (body: Record<string, unknown>) =>
   postData(endpoints.vendorConfigs, body);
 export const updateVendorConfig = (id: string, body: Record<string, unknown>) =>
   patchData(endpoints.vendorConfigById(id), body);
+export const fetchChannelPool = (id: string) =>
+  getData<{ vendor_config_id: string; max_channels?: number | null; reserved_channels?: number; in_use: number; available?: number | null }>(
+    endpoints.vendorConfigPool(id),
+  );
+export const setChannelPool = (
+  id: string,
+  body: { max_channels?: number | null; reserved_channels?: number },
+) =>
+  patchData<{ vendor_config_id: string; max_channels?: number | null; reserved_channels?: number; in_use: number; available?: number | null }>(
+    endpoints.vendorConfigPool(id),
+    body,
+  );
 
 /* ---------- Partner configs ---------- */
 export const fetchPartnerConfigs = () =>
@@ -216,23 +278,44 @@ export const updateWebhookConfig = (
 export const fetchWebhookDeliveries = (params: { partner_id: string | number; limit?: number }) =>
   getData<WebhookDelivery[]>(endpoints.webhookDeliveries, { params });
 
-/* ---------- Assets ---------- */
+/* ---------- Clients ---------- */
+export const fetchClients = (partner_id: string | number, active_only = false) =>
+  getData<ClientItem[]>(endpoints.clients, { params: { partner_id, ...(active_only ? { active_only: true } : {}) } });
+export const fetchClient = (id: string) => getData<ClientItem>(endpoints.clientById(id));
+export const createClient = (body: { partner_id: number; name: string; workspace_ids?: number[] }) =>
+  postData<ClientItem & { id: string }>(endpoints.clients, body);
+export const updateClient = (id: string, body: { name?: string; workspace_ids?: number[]; is_active?: boolean }) =>
+  patchData(endpoints.clientById(id), body);
+export const activateClient = (id: string) => patchData(endpoints.clientActivate(id));
+export const deactivateClient = (id: string) => patchData(endpoints.clientDeactivate(id));
+
+/* ---------- Billing ---------- */
+export const fetchRateCards = () => getData<RateCard[]>(endpoints.billingRateCards);
+export const saveRateCard = (body: {
+  vendor_type?: string;
+  per_min_rate?: number;
+  per_call_rate?: number;
+  currency?: string;
+}) => postData<RateCard>(endpoints.billingRateCards, body);
+export const topupLedger = (body: {
+  partner_id: number;
+  amount: number;
+  client_id?: string;
+  currency?: string;
+  enforce_balance?: boolean;
+  remark?: string;
+}) => postData<Ledger>(endpoints.billingTopup, body);
+export const fetchLedger = (partner_id: string | number, client_id?: string) =>
+  getData<Ledger>(endpoints.billingLedger, {
+    params: { partner_id, ...(client_id ? { client_id } : {}) },
+  });
+export const fetchBillingTransactions = (partner_id: string | number, limit = 50) =>
+  getData<BillingTransaction[]>(endpoints.billingTransactions, {
+    params: { partner_id, limit },
+  });
+export const priceCall = (body: { call_id: string; client_id?: string }) =>
+  postData(endpoints.billingPrice, body);
+
+/* ---------- Assets (call assets only; digital-asset APIs removed) ---------- */
 export const fetchAssets = (params: { partner_id: string | number; asset_type: string }) =>
   getData(endpoints.assets, { params });
-export const fetchDigitalAssets = (params: { partner_id?: string | number; asset_type?: string }) =>
-  getData(endpoints.digitalAssets, { params });
-export const uploadDigitalAsset = (params: {
-  partner_id: string | number;
-  asset_type: string;
-  file: File;
-}) => {
-  const form = new FormData();
-  form.append("file", params.file);
-  return api.post(
-    `${endpoints.digitalAssetUpload}?partner_id=${params.partner_id}&asset_type=${params.asset_type}`,
-    form,
-    { headers: { "Content-Type": "multipart/form-data" } },
-  );
-};
-export const deleteDigitalAsset = (asset_id: string) =>
-  api.delete(endpoints.digitalAssetDelete, { params: { asset_id } });

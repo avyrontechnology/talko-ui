@@ -4,7 +4,7 @@ import { useState } from "react";
 import { PhoneCall } from "lucide-react";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { PageHeader, ErrorBox } from "@/components/page";
-import { createCall, hangupCall, transferCall, fetchCallDetails } from "@/lib/services";
+import { createCall, grpcCallStatus, grpcHangupCall, grpcTransferCall, hangupCall, transferCall, fetchCallDetails, startSupervise, stopSupervise, getSupervise, attendedTransferStart, attendedTransferComplete } from "@/lib/services";
 import { apiErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
 
@@ -29,6 +29,11 @@ export default function CallsPage() {
   const [transferTo, setTransferTo] = useState("");
   const [detailId, setDetailId] = useState("");
   const [vendorConfigId, setVendorConfigId] = useState("");
+  const [grpcVendorConfigId, setGrpcVendorConfigId] = useState("");
+  const [grpcTransferTo, setGrpcTransferTo] = useState("");
+  const [supervisorId, setSupervisorId] = useState("");
+  const [superviseMode, setSuperviseMode] = useState("listen");
+  const [attendedTarget, setAttendedTarget] = useState("");
 
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -181,6 +186,110 @@ export default function CallsPage() {
             >
               Fetch details
             </Button>
+          </Card>
+
+          <Card className="p-4">
+            <h2 className="mb-3 font-medium">gRPC telephony control</h2>
+            <p className="mb-2 text-xs text-zinc-500">
+              Same hangup / transfer semantics over the gRPC TelephonyControl plane
+              (OTOBA / gRPC vendors). Tata vendors keep using REST above.
+            </p>
+            <Label>Vendor config ID</Label>
+            <Input value={grpcVendorConfigId} onChange={(e) => setGrpcVendorConfigId(e.target.value)} placeholder="vc_… (OTOBA)" />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={busy || !callId}
+                onClick={() => run(() => grpcHangupCall({ call_id: callId, vendor_config_id: grpcVendorConfigId || undefined }))}
+              >
+                gRPC Hangup
+              </Button>
+              <Button
+                variant="outline"
+                disabled={busy || !callId}
+                onClick={() => run(() => grpcCallStatus({ call_id: callId, vendor_config_id: grpcVendorConfigId || undefined }))}
+              >
+                gRPC Status
+              </Button>
+            </div>
+            <div className="mt-3">
+              <Label>gRPC transfer destination</Label>
+              <div className="flex gap-2">
+                <Input value={grpcTransferTo} onChange={(e) => setGrpcTransferTo(e.target.value)} placeholder="91…" />
+                <Button
+                  variant="outline"
+                  disabled={busy || !callId || !grpcTransferTo}
+                  onClick={() => run(() => grpcTransferCall({ call_id: callId, destination_number: grpcTransferTo, vendor_config_id: grpcVendorConfigId || undefined }))}
+                >
+                  Transfer
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <h2 className="mb-3 font-medium">Supervisor barge-in</h2>
+            <p className="mb-2 text-xs text-zinc-500">
+              listen = monitor only · whisper = talk to agent · barge = join the call.
+              Uses the shared Call ID above; the invite is pushed over the live call socket.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Supervisor ID</Label>
+                <Input value={supervisorId} onChange={(e) => setSupervisorId(e.target.value)} placeholder="sup_…" />
+              </div>
+              <div>
+                <Label>Mode</Label>
+                <Select value={superviseMode} onChange={(e) => setSuperviseMode(e.target.value)}>
+                  <option value="listen">listen</option>
+                  <option value="whisper">whisper</option>
+                  <option value="barge">barge</option>
+                </Select>
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={busy || !callId || !supervisorId}
+                onClick={() => run(() => startSupervise({ call_id: callId, supervisor_id: supervisorId, mode: superviseMode }))}
+              >
+                Start supervise
+              </Button>
+              <Button
+                variant="outline"
+                disabled={busy || !callId}
+                onClick={() => run(() => getSupervise(callId))}
+              >
+                Session?
+              </Button>
+              <Button
+                variant="outline"
+                disabled={busy || !callId}
+                onClick={() => run(() => stopSupervise(callId))}
+              >
+                Stop
+              </Button>
+            </div>
+            <div className="mt-3">
+              <Label>Warm-transfer target</Label>
+              <div className="flex gap-2">
+                <Input value={attendedTarget} onChange={(e) => setAttendedTarget(e.target.value)} placeholder="91…" />
+                <Button
+                  variant="outline"
+                  disabled={busy || !callId || !attendedTarget}
+                  onClick={() => run(() => attendedTransferStart({ call_id: callId, target_number: attendedTarget }))}
+                >
+                  Stage
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={busy || !callId}
+                  onClick={() => run(() => attendedTransferComplete({ call_id: callId, destination_number: attendedTarget || undefined }))}
+                >
+                  Complete
+                </Button>
+              </div>
+            </div>
           </Card>
         </div>
       </div>

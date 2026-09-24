@@ -17,6 +17,12 @@ export const endpoints = {
   callHangup: "/call/hangup",
   callTransfer: "/call/transfer",
   callDetails: "/call/details",
+  callGrpcHangup: "/call/grpc/hangup",
+  callGrpcTransfer: "/call/grpc/transfer",
+  callGrpcStatus: "/call/grpc/status",
+  callSupervise: "/call/supervise",
+  callAttendedStart: "/call/transfer/attended-start",
+  callAttendedComplete: "/call/transfer/attended-complete",
 
   // CDR
   cdrs: "/cdrs",
@@ -48,6 +54,10 @@ export const endpoints = {
   didsReleaseAi: "/dids/release-ai-agent",
   didsAiAvailable: "/dids/ai-agent/available",
   didsPartnerAi: "/dids/partner-ai-agent-dids",
+  didsExternalImport: "/dids/external/import",
+  didsInternalProvision: "/dids/internal/provision",
+  didsMapExternalInternal: "/dids/map-external-internal",
+  didsPoolUtilization: "/dids/pool-utilization",
 
   // Vendors
   vendors: "/vendors",
@@ -58,6 +68,7 @@ export const endpoints = {
   // Vendor configs
   vendorConfigs: "/vendor_configs",
   vendorConfigById: (id: string) => `/vendor_configs/${id}`,
+  vendorConfigPool: (id: string) => `/vendor_configs/${id}/pool`,
 
   // Partner configs
   partnerConfigs: "/partner_configs",
@@ -79,9 +90,19 @@ export const endpoints = {
     `/partner_webhooks/config/${partnerId}`,
   webhookDeliveries: "/partner_webhooks/deliveries",
 
-  // Assets
+  // Clients (partner-scoped)
+  clients: "/clients",
+  clientById: (id: string) => `/clients/${id}`,
+  clientActivate: (id: string) => `/clients/${id}/activate`,
+  clientDeactivate: (id: string) => `/clients/${id}/deactivate`,
+
+  // Billing (wholesaler / reseller)
+  billingRateCards: "/billing/rate-cards",
+  billingTopup: "/billing/topup",
+  billingLedger: "/billing/ledger",
+  billingTransactions: "/billing/transactions",
+  billingPrice: "/billing/price",
+
+  // Assets (call assets only)
   assets: "/assets",
-  digitalAssets: "/digital_assets",
-  digitalAssetUpload: "/upload_digital_asset",
-  digitalAssetDelete: "/delete_digital_asset",
 } as const;

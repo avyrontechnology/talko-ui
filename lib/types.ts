@@ -115,8 +115,22 @@ export interface VendorConfig {
   cdr_url_handler?: Record<string, unknown>;
   dialer_url_handler?: Record<string, unknown>;
   transfer_url_handler?: Record<string, unknown>;
+  channel_pool?: ChannelPoolConfig | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface ChannelPoolConfig {
+  max_channels?: number | null;
+  reserved_channels?: number;
+}
+
+export interface ChannelPoolStatus {
+  vendor_config_id: string;
+  max_channels?: number | null;
+  reserved_channels?: number;
+  in_use: number;
+  available?: number | null;
 }
 
 /* ---------- Partners ---------- */
@@ -154,6 +168,16 @@ export interface DidRecord {
   cooldown_until?: string | null;
   assign_date?: string | null;
   mapped_date?: string | null;
+  did_layer?: DidLayer;
+  parent_did_number?: string | null;
+}
+
+export type DidLayer = "external" | "internal";
+
+export interface PoolUtilizationRow {
+  did_layer: string;
+  status: string;
+  count: number;
 }
 
 /* ---------- Agent mapping ---------- */
@@ -220,6 +244,47 @@ export interface WebhookDelivery {
   error?: string | null;
   duration_ms?: number | null;
   created_at?: string;
+}
+
+/* ---------- Clients (partner-scoped) ---------- */
+export interface ClientItem {
+  id: string;
+  partner_id: number;
+  name: string;
+  workspace_ids?: number[];
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/* ---------- Billing ---------- */
+export interface RateCard {
+  id: string;
+  vendor_type: string;
+  per_min_rate: number;
+  per_call_rate: number;
+  currency: string;
+  is_active: boolean;
+}
+
+export interface Ledger {
+  id: string;
+  partner_id: number;
+  client_id?: string | null;
+  balance: number;
+  currency: string;
+  enforce_balance: boolean;
+}
+
+export interface BillingTransaction {
+  id: string;
+  partner_id: number;
+  client_id?: string | null;
+  kind: string;
+  amount: number;
+  currency: string;
+  call_id?: string | null;
+  remark?: string | null;
 }
 
 /* ---------- Misc ---------- */

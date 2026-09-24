@@ -85,6 +85,8 @@ const NAV: NavGroup[] = [
       { href: "/vendors", label: "Vendors", icon: Database, blurb: "Telephony providers", roles: ["superadmin"] },
       { href: "/vendor-configs", label: "Vendor Configs", icon: Settings2, blurb: "Endpoints and handlers", roles: ["superadmin"] },
       { href: "/partner-configs", label: "Partner Configs", icon: Users, blurb: "Vendor wiring per partner", roles: ["superadmin"] },
+      { href: "/clients", label: "Clients", icon: Building2, blurb: "Partner-scoped sub-accounts", roles: ["superadmin", "maintainer"] },
+      { href: "/billing", label: "Billing", icon: Database, blurb: "Rate cards, ledgers, topups", roles: ["superadmin"] },
       { href: "/agent-mapping", label: "Agent Mapping", icon: PhoneForwarded, blurb: "Agents to DIDs and boards", roles: ["superadmin", "maintainer"] },
       { href: "/custom-fields", label: "Custom Fields", icon: Tags, blurb: "CDR extensions", roles: ["superadmin", "maintainer"] },
     ],

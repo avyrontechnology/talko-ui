@@ -4,25 +4,45 @@ import { useEffect, useState } from "react";
 import { Settings2 } from "lucide-react";
 import { Button, Card, Input, Label, Textarea } from "@/components/ui";
 import { PageHeader, ErrorBox, EmptyState } from "@/components/page";
-import { createVendorConfig, fetchVendorConfigs, updateVendorConfig } from "@/lib/services";
+import { Skeleton } from "@/components/primitives";
+import { createVendorConfig, fetchChannelPool, fetchVendorConfigs, setChannelPool, updateVendorConfig } from "@/lib/services";
 import { apiErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
-import type { VendorConfig } from "@/lib/types";
+import type { ChannelPoolStatus, VendorConfig } from "@/lib/types";
 
 export default function VendorConfigsPage() {
   const isSuperadmin = useAuthStore((s) => s.isSuperadmin);
   const [rows, setRows] = useState<VendorConfig[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ vendor_id: "", name: "", available_did: "", generic_url_handler: "{}" });
+  const [form, setForm] = useState({ vendor_id: "", name: "", available_did: "", generic_url_handler: "{}", max_channels: "" });
   const [editing, setEditing] = useState<string | null>(null);
   const [editJson, setEditJson] = useState("{}");
+  const [pools, setPools] = useState<Record<string, ChannelPoolStatus>>({});
+  const [poolForm, setPoolForm] = useState<Record<string, string>>({});
+  const [msg, setMsg] = useState("");
 
   const load = async () => {
     setLoading(true);
     setError("");
     try {
-      setRows(await fetchVendorConfigs());
+      const configs = await fetchVendorConfigs();
+      setRows(configs);
+      const entries = await Promise.all(
+        configs.map(async (c) => {
+          try {
+            const pool = await fetchChannelPool(c.id);
+            return [c.id, pool] as const;
+          } catch {
+            return [c.id, null] as const;
+          }
+        }),
+      );
+      const next: Record<string, ChannelPoolStatus> = {};
+      for (const [id, pool] of entries) {
+        if (pool) next[id] = pool;
+      }
+      setPools(next);
     } catch (e) {
       setError(apiErrorMessage(e));
     } finally {
@@ -39,14 +59,38 @@ export default function VendorConfigsPage() {
   const create = async () => {
     setError("");
     try {
+      const max = form.max_channels.trim() === "" ? undefined : Number(form.max_channels);
+      if (max !== undefined && (!Number.isInteger(max) || max < 1)) {
+        setError("max_channels must be a positive integer or empty (unlimited)");
+        return;
+      }
       await createVendorConfig({
         vendor_id: form.vendor_id,
         name: form.name || undefined,
         available_did: form.available_did.split(",").map((s) => s.trim()).filter(Boolean),
         generic_url_handler: JSON.parse(form.generic_url_handler || "{}"),
+        ...(max !== undefined ? { channel_pool: { max_channels: max, reserved_channels: 0 } } : {}),
       });
-      setForm({ vendor_id: "", name: "", available_did: "", generic_url_handler: "{}" });
+      setForm({ vendor_id: "", name: "", available_did: "", generic_url_handler: "{}", max_channels: "" });
       await load();
+    } catch (e) {
+      setError(apiErrorMessage(e));
+    }
+  };
+
+  const savePool = async (id: string) => {
+    setError("");
+    setMsg("");
+    try {
+      const raw = (poolForm[id] ?? "").trim();
+      const max = raw === "" ? null : Number(raw);
+      if (max !== null && (!Number.isInteger(max) || (max as number) < 1)) {
+        setError("max_channels must be a positive integer or empty (unlimited)");
+        return;
+      }
+      const pool = await setChannelPool(id, { max_channels: max, reserved_channels: 0 });
+      setPools((p) => ({ ...p, [id]: pool }));
+      setMsg(`Pool updated for ${id.slice(-6)}`);
     } catch (e) {
       setError(apiErrorMessage(e));
     }
@@ -73,17 +117,19 @@ export default function VendorConfigsPage() {
       ) : (
       <>
       {error && <div className="mb-3"><ErrorBox message={error} /></div>}
+      {msg && <Card className="mb-3 border-green-200 bg-green-50 p-3 text-sm text-green-700">{msg}</Card>}
       <Card className="mb-3 p-4">
         <h2 className="mb-2 font-medium">Create vendor config</h2>
-        <div className="grid gap-2 md:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-5">
           <div><Label>Vendor ID *</Label><Input value={form.vendor_id} onChange={(e) => setForm({ ...form, vendor_id: e.target.value })} /></div>
           <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
           <div><Label>Available DIDs (comma separated)</Label><Input value={form.available_did} onChange={(e) => setForm({ ...form, available_did: e.target.value })} /></div>
+          <div><Label>Max channels (empty = unlimited)</Label><Input value={form.max_channels} onChange={(e) => setForm({ ...form, max_channels: e.target.value })} placeholder="e.g. 10" /></div>
           <div><Label>generic_url_handler (JSON)</Label><Input value={form.generic_url_handler} onChange={(e) => setForm({ ...form, generic_url_handler: e.target.value })} /></div>
         </div>
         <Button size="sm" className="mt-2" onClick={create} disabled={!form.vendor_id}>Create</Button>
       </Card>
-      {loading ? <p className="text-sm text-zinc-500">Loading…</p> : rows.length === 0 ? <EmptyState message="No vendor configs." /> : (
+      {loading ? <Skeleton className="h-24" /> : rows.length === 0 ? <EmptyState message="No vendor configs." /> : (
         <div className="space-y-2">
           {rows.map((c) => (
             <Card key={c.id} className="p-4">
@@ -91,10 +137,29 @@ export default function VendorConfigsPage() {
                 <div>
                   <p className="font-medium">{c.name || c.vendor_name || c.id}</p>
                   <p className="font-mono text-xs text-zinc-500">{c.id} · vendor {c.vendor_id} · {(c.available_did ?? []).length} DIDs</p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    Pool: {pools[c.id] ? (
+                      <span className="font-mono">
+                        {pools[c.id].in_use}/{pools[c.id].max_channels ?? "∞"} in use
+                        {pools[c.id].available != null && ` · ${pools[c.id].available} free`}
+                      </span>
+                    ) : (
+                      <span className="text-zinc-400">unlimited / not loaded</span>
+                    )}
+                  </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => { setEditing(c.id); setEditJson(JSON.stringify({ generic_url_handler: c.generic_url_handler ?? {} }, null, 2)); }}>
-                  Edit handlers
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={poolForm[c.id] ?? ""}
+                    onChange={(e) => setPoolForm({ ...poolForm, [c.id]: e.target.value })}
+                    placeholder={pools[c.id]?.max_channels != null ? String(pools[c.id].max_channels) : "max (∞)"}
+                    className="w-24"
+                  />
+                  <Button size="sm" variant="outline" onClick={() => savePool(c.id)}>Set pool</Button>
+                  <Button size="sm" variant="outline" onClick={() => { setEditing(c.id); setEditJson(JSON.stringify({ generic_url_handler: c.generic_url_handler ?? {} }, null, 2)); }}>
+                    Edit handlers
+                  </Button>
+                </div>
               </div>
               {editing === c.id && (
                 <div className="mt-2">

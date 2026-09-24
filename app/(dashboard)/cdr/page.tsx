@@ -5,7 +5,7 @@ import { FileClock, Play } from "lucide-react";
 import { Badge, Button, Input, Label, Select } from "@/components/ui";
 import { PageHeader, ErrorBox, EmptyState } from "@/components/page";
 import { Pagination, SectionCard, TableSkeleton, TableWrap, Th, THead } from "@/components/primitives";
-import { fetchAgentCallLogs, fetchCallHistory, fetchCdrs } from "@/lib/services";
+import { fetchAgentCallLogs, fetchCallDetails, fetchCallHistory, fetchCdrs } from "@/lib/services";
 import { apiErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
 import type { Cdr } from "@/lib/types";
@@ -33,6 +33,9 @@ export default function CdrPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [callType, setCallType] = useState("");
+  const [syncForm, setSyncForm] = useState({ call_id: "", call_uuid: "", vendor_config_id: "" });
+  const [syncMsg, setSyncMsg] = useState("");
+  const [syncLoading, setSyncLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -209,6 +212,56 @@ export default function CdrPage() {
           onNext={() => setOffset(offset + limit)}
         />
       )}
+
+      <SectionCard
+        title="Vendor CDR sync (Tata / OTOBA)"
+        actions={
+          <Button
+            size="sm"
+            disabled={syncLoading || (!syncForm.call_id && !syncForm.call_uuid) || !syncForm.vendor_config_id}
+            onClick={async () => {
+              setError("");
+              setSyncMsg("");
+              setSyncLoading(true);
+              try {
+                const res = await fetchCallDetails({
+                  vendor_config_id: syncForm.vendor_config_id,
+                  ...(syncForm.call_id ? { call_id: syncForm.call_id } : {}),
+                  ...(syncForm.call_uuid ? { call_uuid: syncForm.call_uuid } : {}),
+                });
+                setSyncMsg(JSON.stringify(res).slice(0, 600));
+                await load();
+              } catch (e) {
+                setError(apiErrorMessage(e));
+              } finally {
+                setSyncLoading(false);
+              }
+            }}
+          >
+            {syncLoading ? "Syncing…" : "Sync now"}
+          </Button>
+        }
+      >
+        <p className="mb-3 text-xs text-slate-500">
+          Pulls a single CDR from the vendor API via its vendor config — backend routes
+          tata_tele vs otoba automatically. Use for OTOBA relay verification.
+        </p>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div>
+            <Label>Call ID (vendor)</Label>
+            <Input value={syncForm.call_id} onChange={(e) => setSyncForm({ ...syncForm, call_id: e.target.value })} placeholder="OTOBA/Tata call id" />
+          </div>
+          <div>
+            <Label>Call UUID (alt identifier)</Label>
+            <Input value={syncForm.call_uuid} onChange={(e) => setSyncForm({ ...syncForm, call_uuid: e.target.value })} />
+          </div>
+          <div>
+            <Label>Vendor config ID *</Label>
+            <Input value={syncForm.vendor_config_id} onChange={(e) => setSyncForm({ ...syncForm, vendor_config_id: e.target.value })} placeholder="ObjectId" />
+          </div>
+        </div>
+        {syncMsg && <p className="mt-2 break-all font-mono text-[11px] text-green-700">{syncMsg}</p>}
+      </SectionCard>
     </div>
   );
 }
