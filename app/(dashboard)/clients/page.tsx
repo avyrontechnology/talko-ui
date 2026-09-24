@@ -18,19 +18,21 @@ import type { ClientItem } from "@/lib/types";
 export default function ClientsPage() {
   const defaultPartner = useAuthStore((s) => s.partnerId);
   const isSuperadmin = useAuthStore((s) => s.isSuperadmin);
-  const [partnerId, setPartnerId] = useState(String(defaultPartner ?? ""));
+  const scopedPartnerId = useAuthStore((s) => s.scopedPartnerId);
   const [rows, setRows] = useState<ClientItem[]>([]);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", workspace_ids: "" });
 
-  // Effective owner: typed filter for superadmin, own scope otherwise.
-  const effectivePartner = isSuperadmin ? partnerId.trim() : String(defaultPartner ?? "").trim() || partnerId.trim();
+  // No Partner ID field on this page by design: partner users are bound to
+  // their own scope, superadmins use the global topbar scope switcher.
+  // Empty scope + superadmin = all clients.
+  const effectivePartner = (scopedPartnerId ?? "").trim() || String(defaultPartner ?? "").trim();
 
   const load = async (override?: string) => {
     setError("");
-    const pid = override ?? (isSuperadmin ? partnerId.trim() : effectivePartner);
+    const pid = override ?? effectivePartner;
     if (!pid && !isSuperadmin) {
       setError("Partner scope missing — sign in again");
       return;
@@ -48,15 +50,15 @@ export default function ClientsPage() {
 
   useEffect(() => {
     if (isSuperadmin) {
-      // Superadmin default: all clients on mount.
-      void load("");
+      // Superadmin default: all clients (or scoped partner) on mount/scope change.
+      void load(effectivePartner);
     } else if (defaultPartner) {
-      // Partner scope: own clients, no Partner ID needed.
+      // Partner scope: own clients.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       void load(String(defaultPartner));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSuperadmin]);
+  }, [isSuperadmin, scopedPartnerId]);
 
   const act = async (fn: () => Promise<unknown>, ok: string) => {
     setError("");
@@ -72,8 +74,12 @@ export default function ClientsPage() {
 
   const create = async () => {
     const owner = effectivePartner;
-    if (!owner || !form.name.trim()) {
-      setError(isSuperadmin ? "Partner ID + client name are required" : "Client name is required");
+    if (!owner) {
+      setError("Set a partner scope in the topbar to create a client");
+      return;
+    }
+    if (!form.name.trim()) {
+      setError("Client name is required");
       return;
     }
     const workspace_ids = form.workspace_ids
@@ -118,18 +124,14 @@ export default function ClientsPage() {
       )}
 
       <Card className="mb-3 p-4">
-        <div className={`grid gap-2 ${isSuperadmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
-          {isSuperadmin ? (
-            <div>
-              <Label>Partner ID (empty = all)</Label>
-              <Input value={partnerId} onChange={(e) => setPartnerId(e.target.value)} placeholder="empty = all" />
-            </div>
-          ) : (
-            <div>
-              <Label>Partner</Label>
-              <Input value={effectivePartner} disabled />
-            </div>
-          )}
+        {isSuperadmin && (
+          <p className="mb-2 text-xs text-zinc-500">
+            {effectivePartner
+              ? `Scoped to partner ${effectivePartner} (change in the topbar scope switcher).`
+              : "Showing all partners. Set a topbar scope to filter, or to create a client under one partner."}
+          </p>
+        )}
+        <div className="grid gap-2 md:grid-cols-2">
           <div>
             <Label>Client name *</Label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Acme Corp" />
@@ -144,14 +146,14 @@ export default function ClientsPage() {
           </div>
         </div>
         <Button size="sm" className="mt-2" onClick={create}>
-          Create client
+          Create client{effectivePartner ? ` for partner ${effectivePartner}` : ""}
         </Button>
       </Card>
 
       {loading ? (
         <TableSkeleton rows={5} cols={5} />
       ) : rows.length === 0 ? (
-        <EmptyState message={isSuperadmin && !partnerId.trim() ? "No clients yet." : "No clients for this partner."} hint="Create the first client above." />
+        <EmptyState message={isSuperadmin && !effectivePartner ? "No clients yet." : "No clients for this partner."} hint="Create the first client above." />
       ) : (
         <Card className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
