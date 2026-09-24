@@ -97,12 +97,22 @@ export default function PartnerConfigsPage() {
                 <div>
                   <p className="font-medium">Partner {c.partner_id} <Badge tone={c.is_active ? "green" : "zinc"}>{c.is_active ? "active" : "inactive"}</Badge></p>
                   <p className="font-mono text-xs text-zinc-500">{c.id} · vendor {c.vendor_id}</p>
+                  <p className="mt-1 font-mono text-xs text-zinc-500">
+                    vendor_config {String(c.vendor_config_id ?? "—")}
+                    {" · "}workspaces {Array.isArray(c.workspace_ids) ? c.workspace_ids.join(", ") : "—"}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    round_robin {String(c.enable_round_robin ?? false)}
+                    {" · "}agent_mapping {String(c.enable_agent_mapping ?? false)}
+                    {" · "}workspace {String(c.enable_workspace ?? false)}
+                    {" · "}dialer {String(c.dialer_enabled ?? false)}
+                  </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => { setEditing(c.id); setEditJson(JSON.stringify({ is_active: c.is_active }, null, 2)); }}>Edit JSON</Button>
+                <Button size="sm" variant="outline" onClick={() => { setEditing(c.id); setEditJson(JSON.stringify(c, null, 2)); }}>Edit JSON</Button>
               </div>
               {editing === c.id && (
                 <div className="mt-2">
-                  <Textarea rows={5} value={editJson} onChange={(e) => setEditJson(e.target.value)} className="font-mono text-xs" />
+                  <Textarea rows={12} value={editJson} onChange={(e) => setEditJson(e.target.value)} className="font-mono text-xs" />
                   <div className="mt-2 flex gap-2">
                     <Button size="sm" onClick={saveEdit}>Save</Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>

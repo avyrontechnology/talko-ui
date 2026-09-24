@@ -259,8 +259,11 @@ export const createApiKey = (body: { partner_id: number; label?: string }) =>
   postData<
     ApiKeyItem & { key: string; key_prefix: string }
   >(endpoints.apiKeys, body);
-export const fetchApiKeys = (partner_id: string | number) =>
-  getData<ApiKeyItem[]>(endpoints.apiKeys, { params: { partner_id } });
+export const fetchApiKeys = (partner_id?: string | number) =>
+  getData<ApiKeyItem[]>(
+    endpoints.apiKeys,
+    partner_id === undefined || partner_id === "" ? undefined : { params: { partner_id } },
+  );
 export const revokeApiKey = (id: string) => postData(endpoints.apiKeyRevoke(id));
 
 /* ---------- Webhooks ---------- */
