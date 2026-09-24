@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Users } from "lucide-react";
-import { Badge, Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Input, Label, Select } from "@/components/ui";
 import { PageHeader, ErrorBox, EmptyState } from "@/components/page";
 import { createPartnerConfig, fetchClients, fetchPartnerConfigs, updatePartnerConfig } from "@/lib/services";
 import { apiErrorMessage } from "@/lib/api-client";
@@ -17,7 +17,21 @@ export default function PartnerConfigsPage() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ partner_id: "", client_id: "", vendor_id: "", vendor_config_id: "", workspace_ids: "" });
   const [editing, setEditing] = useState<string | null>(null);
-  const [editJson, setEditJson] = useState("{}");
+  const [editForm, setEditForm] = useState({
+    is_active: true,
+    client_id: "",
+    ai_vendor_config_id: "",
+    enable_round_robin: false,
+    enable_agent_mapping: false,
+    enable_workspace: false,
+    dialer_enabled: false,
+    enable_agent_reassignment_on_inactive: false,
+    enable_inbound_round_robin: false,
+    workspace_ids: "",
+    workspace_did_counts: "",
+    agent_mapping_ids: "",
+    round_robin_did_count: "",
+  });
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [clientsLoading, setClientsLoading] = useState(false);
 
@@ -72,29 +86,66 @@ export default function PartnerConfigsPage() {
     }
   };
 
-  const setEditClient = (clientId: string) => {
-    try {
-      const obj = JSON.parse(editJson) as Record<string, unknown>;
-      if (!clientId) delete obj.client_id;
-      else obj.client_id = clientId;
-      setEditJson(JSON.stringify(obj, null, 2));
-    } catch {
-      // invalid JSON — leave untouched, Save will surface the parse error
-    }
+  const openEdit = (c: PartnerConfig) => {
+    setEditing(c.id);
+    setEditForm({
+      is_active: c.is_active ?? true,
+      client_id: typeof c.client_id === "string" ? c.client_id : "",
+      ai_vendor_config_id: typeof c.ai_vendor_config_id === "string" ? c.ai_vendor_config_id : "",
+      enable_round_robin: Boolean(c.enable_round_robin),
+      enable_agent_mapping: Boolean(c.enable_agent_mapping),
+      enable_workspace: Boolean(c.enable_workspace),
+      dialer_enabled: Boolean(c.dialer_enabled),
+      enable_agent_reassignment_on_inactive: Boolean(c.enable_agent_reassignment_on_inactive),
+      enable_inbound_round_robin: Boolean(c.enable_inbound_round_robin),
+      workspace_ids: Array.isArray(c.workspace_ids) ? c.workspace_ids.join(", ") : "",
+      workspace_did_counts:
+        c.workspace_did_counts && typeof c.workspace_did_counts === "object"
+          ? JSON.stringify(c.workspace_did_counts)
+          : "",
+      agent_mapping_ids: Array.isArray(c.agent_mapping_ids) ? c.agent_mapping_ids.join(", ") : "",
+      round_robin_did_count:
+        c.round_robin_did_count === null || c.round_robin_did_count === undefined ? "" : String(c.round_robin_did_count),
+    });
+    void loadClients(String(c.partner_id));
   };
 
-  const editClientId = (() => {
-    try {
-      const obj = JSON.parse(editJson) as Record<string, unknown>;
-      return typeof obj.client_id === "string" ? obj.client_id : "";
-    } catch {
-      return "";
-    }
-  })();
   const saveEdit = async () => {
     if (!editing) return;
+    setError("");
+    const numList = (s: string) =>
+      s.split(",").map((x) => Number(x.trim())).filter((n) => !Number.isNaN(n));
+    let didCounts: Record<string, number> | undefined;
+    if (editForm.workspace_did_counts.trim()) {
+      try {
+        didCounts = JSON.parse(editForm.workspace_did_counts);
+      } catch {
+        setError('workspace_did_counts must be valid JSON, e.g. {"5": 5}');
+        return;
+      }
+    }
+    const agentIds = editForm.agent_mapping_ids.trim() ? numList(editForm.agent_mapping_ids) : undefined;
+    const rrCount = editForm.round_robin_did_count.trim() === "" ? undefined : Number(editForm.round_robin_did_count.trim());
+    if (rrCount !== undefined && (!Number.isInteger(rrCount) || rrCount < 1)) {
+      setError("round_robin_did_count must be a positive integer or empty");
+      return;
+    }
     try {
-      await updatePartnerConfig(editing, JSON.parse(editJson));
+      await updatePartnerConfig(editing, {
+        is_active: editForm.is_active,
+        client_id: editForm.client_id.trim() ? editForm.client_id.trim() : null,
+        ai_vendor_config_id: editForm.ai_vendor_config_id.trim() ? editForm.ai_vendor_config_id.trim() : null,
+        enable_round_robin: editForm.enable_round_robin,
+        enable_agent_mapping: editForm.enable_agent_mapping,
+        enable_workspace: editForm.enable_workspace,
+        dialer_enabled: editForm.dialer_enabled,
+        enable_agent_reassignment_on_inactive: editForm.enable_agent_reassignment_on_inactive,
+        enable_inbound_round_robin: editForm.enable_inbound_round_robin,
+        workspace_ids: numList(editForm.workspace_ids),
+        ...(didCounts !== undefined ? { workspace_did_counts: didCounts } : {}),
+        ...(agentIds !== undefined ? { agent_mapping_ids: agentIds } : {}),
+        ...(rrCount !== undefined ? { round_robin_did_count: rrCount } : {}),
+      });
       setEditing(null);
       await load();
     } catch (e) {
@@ -156,24 +207,66 @@ export default function PartnerConfigsPage() {
                     {" · "}dialer {String(c.dialer_enabled ?? false)}
                   </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => { setEditing(c.id); setEditJson(JSON.stringify(c, null, 2)); void loadClients(String(c.partner_id)); }}>Edit JSON</Button>
+                <Button size="sm" variant="outline" onClick={() => openEdit(c)}>Edit</Button>
               </div>
               {editing === c.id && (
-                <div className="mt-2">
-                  <div className="mb-2 flex flex-wrap items-end gap-2">
+                <div className="mt-3 border-t pt-3">
+                  <div className="grid gap-2 md:grid-cols-3">
                     <div>
                       <Label>Client</Label>
-                      <Select value={editClientId} onChange={(e) => setEditClient(e.target.value)}>
+                      <Select value={editForm.client_id} onChange={(e) => setEditForm({ ...editForm, client_id: e.target.value })}>
                         <option value="">— partner-level (no client) —</option>
                         {clients.map((cl) => (
                           <option key={cl.id} value={cl.id}>{cl.name} ({cl.id.slice(-6)})</option>
                         ))}
                       </Select>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => void loadClients(String(c.partner_id))}>Reload clients</Button>
+                    <div>
+                      <Label>AI vendor config ID</Label>
+                      <Input value={editForm.ai_vendor_config_id} onChange={(e) => setEditForm({ ...editForm, ai_vendor_config_id: e.target.value })} placeholder="empty = none" />
+                    </div>
+                    <div>
+                      <Label>Workspace IDs</Label>
+                      <Input value={editForm.workspace_ids} onChange={(e) => setEditForm({ ...editForm, workspace_ids: e.target.value })} placeholder="98, 11" />
+                    </div>
+                    <div>
+                      <Label>Workspace DID counts (JSON)</Label>
+                      <Input value={editForm.workspace_did_counts} onChange={(e) => setEditForm({ ...editForm, workspace_did_counts: e.target.value })} placeholder='{"98": 3}' />
+                    </div>
+                    <div>
+                      <Label>Agent mapping IDs</Label>
+                      <Input value={editForm.agent_mapping_ids} onChange={(e) => setEditForm({ ...editForm, agent_mapping_ids: e.target.value })} placeholder="1, 2" />
+                    </div>
+                    <div>
+                      <Label>Round-robin DID count</Label>
+                      <Input value={editForm.round_robin_did_count} onChange={(e) => setEditForm({ ...editForm, round_robin_did_count: e.target.value })} placeholder="empty" />
+                    </div>
                   </div>
-                  <Textarea rows={12} value={editJson} onChange={(e) => setEditJson(e.target.value)} className="font-mono text-xs" />
-                  <div className="mt-2 flex gap-2">
+                  <div className="mt-2 flex flex-wrap gap-4">
+                    {(
+                      [
+                        ["is_active", "Active"],
+                        ["enable_round_robin", "Round robin"],
+                        ["enable_agent_mapping", "Agent mapping"],
+                        ["enable_workspace", "Workspace mode"],
+                        ["dialer_enabled", "Dialer"],
+                        ["enable_agent_reassignment_on_inactive", "Reassign on inactive"],
+                        ["enable_inbound_round_robin", "Inbound round robin"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-1.5 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={editForm[key]}
+                          onChange={(e) => setEditForm({ ...editForm, [key]: e.target.checked })}
+                          className="h-4 w-4 accent-red-500"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => void loadClients(String(c.partner_id))}>Reload clients</Button>
                     <Button size="sm" onClick={saveEdit}>Save</Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
                   </div>
