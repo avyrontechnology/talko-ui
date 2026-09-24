@@ -140,6 +140,7 @@ export interface ChannelPoolStatus {
 export interface PartnerConfig {
   id: string;
   partner_id: number;
+  client_id?: string | null;
   vendor_id: string;
   vendor_config_id?: string;
   is_active?: boolean;

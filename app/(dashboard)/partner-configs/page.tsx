@@ -15,7 +15,7 @@ export default function PartnerConfigsPage() {
   const [rows, setRows] = useState<PartnerConfig[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ partner_id: "", vendor_id: "", vendor_config_id: "", workspace_ids: "" });
+  const [form, setForm] = useState({ partner_id: "", client_id: "", vendor_id: "", vendor_config_id: "", workspace_ids: "" });
   const [editing, setEditing] = useState<string | null>(null);
   const [editJson, setEditJson] = useState("{}");
 
@@ -42,11 +42,12 @@ export default function PartnerConfigsPage() {
     try {
       await createPartnerConfig({
         partner_id: Number(form.partner_id),
+        ...(form.client_id.trim() ? { client_id: form.client_id.trim() } : {}),
         vendor_id: form.vendor_id,
         vendor_config_id: form.vendor_config_id,
         workspace_ids: form.workspace_ids.split(",").map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n)),
       });
-      setForm({ partner_id: "", vendor_id: "", vendor_config_id: "", workspace_ids: "" });
+      setForm({ partner_id: "", client_id: "", vendor_id: "", vendor_config_id: "", workspace_ids: "" });
       await load();
     } catch (e) {
       setError(apiErrorMessage(e));
@@ -81,8 +82,9 @@ export default function PartnerConfigsPage() {
       {error && <div className="mb-3"><ErrorBox message={error} /></div>}
       <Card className="mb-3 p-4">
         <h2 className="mb-2 font-medium">Create partner config</h2>
-        <div className="grid gap-2 md:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-5">
           <div><Label>Partner ID *</Label><Input value={form.partner_id} onChange={(e) => setForm({ ...form, partner_id: e.target.value })} /></div>
+          <div><Label>Client ID (optional)</Label><Input value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} placeholder="empty = partner-level" /></div>
           <div><Label>Vendor ID *</Label><Input value={form.vendor_id} onChange={(e) => setForm({ ...form, vendor_id: e.target.value })} /></div>
           <div><Label>Vendor config ID *</Label><Input value={form.vendor_config_id} onChange={(e) => setForm({ ...form, vendor_config_id: e.target.value })} /></div>
           <div><Label>Workspace IDs</Label><Input value={form.workspace_ids} onChange={(e) => setForm({ ...form, workspace_ids: e.target.value })} placeholder="12, 34" /></div>
@@ -95,7 +97,7 @@ export default function PartnerConfigsPage() {
             <Card key={c.id} className="p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="font-medium">Partner {c.partner_id} <Badge tone={c.is_active ? "green" : "zinc"}>{c.is_active ? "active" : "inactive"}</Badge></p>
+                  <p className="font-medium">Partner {c.partner_id}{c.client_id ? ` · Client ${c.client_id}` : ""} <Badge tone={c.is_active ? "green" : "zinc"}>{c.is_active ? "active" : "inactive"}</Badge></p>
                   <p className="font-mono text-xs text-zinc-500">{c.id} · vendor {c.vendor_id}</p>
                   <p className="mt-1 font-mono text-xs text-zinc-500">
                     vendor_config {String(c.vendor_config_id ?? "—")}
