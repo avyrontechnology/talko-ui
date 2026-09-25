@@ -5,16 +5,15 @@ import { FileClock, Play } from "lucide-react";
 import { Badge, Button, Input, Label, Select } from "@/components/ui";
 import { PageHeader, ErrorBox, EmptyState } from "@/components/page";
 import { Pagination, SectionCard, TableSkeleton, TableWrap, Th, THead } from "@/components/primitives";
-import { fetchAgentCallLogs, fetchCallDetails, fetchCallHistory, fetchCdrs } from "@/lib/services";
+import { fetchCallDetails, fetchCallHistory, fetchCdrs } from "@/lib/services";
 import { apiErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
 import type { Cdr } from "@/lib/types";
 
-type Tab = "all" | "agent" | "history";
+type Tab = "all" | "history";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "all", label: "All CDRs" },
-  { id: "agent", label: "Agent logs" },
   { id: "history", label: "History" },
 ];
 
@@ -46,15 +45,6 @@ export default function CdrPage() {
         const list = Array.isArray(data) ? data : [];
         setRows(list);
         setTotal(list.length < limit ? offset + list.length : null);
-      } else if (tab === "agent") {
-        if (!entityIds.trim()) {
-          setError("entity_ids is required for agent call logs");
-          setLoading(false);
-          return;
-        }
-        const data = await fetchAgentCallLogs({ offset, limit, entity_type: entityType, entity_ids: entityIds });
-        setRows(data.call_histories ?? []);
-        setTotal(data.total_count ?? null);
       } else {
         if (!entityIds.trim()) {
           setError("entity_id is required for call-record-history");
@@ -88,7 +78,7 @@ export default function CdrPage() {
     <div>
       <PageHeader
         title="CDR & Call History"
-        subtitle="GET /cdrs · /cdrs/agent_call_logs · /cdrs/call-record-history"
+        subtitle="GET /cdrs · /cdrs/call-record-history"
         icon={FileClock}
       />
 
@@ -119,7 +109,7 @@ export default function CdrPage() {
                 </Select>
               </div>
               <div>
-                <Label>{tab === "agent" ? "Entity IDs (comma separated)" : "Entity ID"}</Label>
+                <Label>{tab === "history" ? "Entity ID" : "Entity IDs (comma separated)"}</Label>
                 <Input value={entityIds} onChange={(e) => setEntityIds(e.target.value)} placeholder="abc123" />
               </div>
             </>
@@ -160,7 +150,7 @@ export default function CdrPage() {
         {loading ? (
           <TableSkeleton rows={8} cols={7} />
         ) : rows.length === 0 ? (
-          <EmptyState message="No records found" hint="Adjust the filters above. Agent logs and history require an entity ID." />
+          <EmptyState message="No records found" hint="Adjust the filters above. History requires an entity ID." />
         ) : (
           <TableWrap minWidth={960}>
             <THead>
