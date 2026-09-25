@@ -10,7 +10,7 @@ export interface TalkoEnvelope<T> {
 export type EntityType = "Lead" | "Contact";
 
 export interface CallCreatePayload {
-  entity_type: EntityType;
+  entity_type?: EntityType;
   entity_id?: string;
   entity_name?: string;
   workspace_id?: number;

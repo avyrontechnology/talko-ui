@@ -15,8 +15,6 @@ export default function CallsPage() {
   const [busy, setBusy] = useState(false);
 
   const [create, setCreate] = useState({
-    entity_type: "Lead",
-    entity_id: "",
     workspace_id: "",
     agent_number: "",
     to_number: "",
@@ -63,20 +61,6 @@ export default function CallsPage() {
           <h2 className="mb-3 font-medium">Initiate call</h2>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label>Entity type</Label>
-              <Select
-                value={create.entity_type}
-                onChange={(e) => setCreate({ ...create, entity_type: e.target.value })}
-              >
-                <option value="Lead">Lead</option>
-                <option value="Contact">Contact</option>
-              </Select>
-            </div>
-            <div>
-              <Label>Entity ID</Label>
-              <Input value={create.entity_id} onChange={(e) => setCreate({ ...create, entity_id: e.target.value })} placeholder="entity_123" />
-            </div>
-            <div>
               <Label>Workspace ID</Label>
               <Input value={create.workspace_id} onChange={(e) => setCreate({ ...create, workspace_id: e.target.value })} placeholder="12" />
             </div>
@@ -120,8 +104,6 @@ export default function CallsPage() {
             onClick={() =>
               run(() =>
                 createCall({
-                  entity_type: create.entity_type as "Lead" | "Contact",
-                  entity_id: create.entity_id || undefined,
                   workspace_id: create.workspace_id ? Number(create.workspace_id) : undefined,
                   partner_id: create.partner_id ? Number(create.partner_id) : undefined,
                   agent_number: create.enable_ai_bridge ? undefined : create.agent_number || undefined,
