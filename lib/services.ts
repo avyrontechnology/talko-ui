@@ -93,17 +93,29 @@ export interface CdrListParams {
   offset?: number;
   limit?: number;
 }
+// Backend pagination is 1-based pages (skip = (offset-1)*limit); the UI
+// works with 0-based skip offsets. Translate here so every caller stays
+// skip-based while the API receives valid pages (>= 1).
+function toPageParams(params: object) {
+  const p = params as Record<string, unknown>;
+  const rawOffset = p.offset;
+  const rawLimit = p.limit;
+  const offset = typeof rawOffset === "number" ? rawOffset : 0;
+  const limit = typeof rawLimit === "number" && rawLimit > 0 ? rawLimit : 20;
+  const { offset: _o, limit: _l, ...rest } = p;
+  return { ...rest, limit, offset: Math.floor(offset / limit) + 1 };
+}
 export const fetchCdrs = (params: CdrListParams = {}) =>
-  getData<Cdr[]>(endpoints.cdrs, { params });
+  getData<Cdr[]>(endpoints.cdrs, { params: toPageParams(params) });
 
 export const fetchAgentCallLogs = (params: Record<string, string | number | boolean>) =>
   getData<{ call_histories: Cdr[]; total_count: number }>(endpoints.agentCallLogs, {
-    params,
+    params: toPageParams(params as { offset?: number; limit?: number } & Record<string, unknown>),
   });
 
 export const fetchCallHistory = (params: { offset?: number; limit?: number; payload: string }) =>
   getData<{ call_record: Cdr[]; total_count: number }>(endpoints.callRecordHistory, {
-    params,
+    params: toPageParams(params),
   });
 
 export const setCdrCustomFields = (callId: string, custom_fields: Record<string, unknown>) =>
