@@ -77,7 +77,7 @@ export default function PartnerConfigsPage() {
         ...(form.client_id.trim() ? { client_id: form.client_id.trim() } : {}),
         vendor_id: form.vendor_id,
         vendor_config_id: form.vendor_config_id,
-        workspace_ids: form.workspace_ids.split(",").map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n)),
+        workspace_ids: form.workspace_ids.split(",").map((s) => s.trim()).filter(Boolean).map(Number).filter((n) => Number.isInteger(n)),
       });
       setForm({ partner_id: "", client_id: "", vendor_id: "", vendor_config_id: "", workspace_ids: "" });
       await load();
@@ -113,8 +113,8 @@ export default function PartnerConfigsPage() {
   const saveEdit = async () => {
     if (!editing) return;
     setError("");
-    const numList = (s: string) =>
-      s.split(",").map((x) => Number(x.trim())).filter((n) => !Number.isNaN(n));
+  const numList = (s: string) =>
+    s.split(",").map((x) => x.trim()).filter(Boolean).map(Number).filter((n) => Number.isInteger(n));
     let didCounts: Record<string, number> | undefined;
     if (editForm.workspace_did_counts.trim()) {
       try {
