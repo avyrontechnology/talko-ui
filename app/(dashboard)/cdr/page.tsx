@@ -26,8 +26,6 @@ export default function CdrPage() {
 
   const [offset, setOffset] = useState(0);
   const limit = 20;
-  const [entityType, setEntityType] = useState("Lead");
-  const [entityIds, setEntityIds] = useState("");
   const [workspaceId, setWorkspaceId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -46,15 +44,7 @@ export default function CdrPage() {
         setRows(list);
         setTotal(list.length < limit ? offset + list.length : null);
       } else {
-        if (!entityIds.trim()) {
-          setError("entity_id is required for call-record-history");
-          setLoading(false);
-          return;
-        }
-        const payload: Record<string, unknown> = {
-          entity_type: entityType,
-          entity_id: entityIds.split(",")[0].trim(),
-        };
+        const payload: Record<string, unknown> = {};
         if (workspaceId) payload.workspace_id = Number(workspaceId);
         if (from && to) payload.time_range = `${new Date(from).getTime()}-${new Date(to).getTime()}`;
         if (callType) payload.call_type = callType;
@@ -67,7 +57,7 @@ export default function CdrPage() {
     } finally {
       setLoading(false);
     }
-  }, [tab, offset, entityType, entityIds, workspaceId, from, to, callType]);
+  }, [tab, offset, workspaceId, from, to, callType]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -99,21 +89,6 @@ export default function CdrPage() {
         }
       >
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {tab !== "all" && (
-            <>
-              <div>
-                <Label>Entity type</Label>
-                <Select value={entityType} onChange={(e) => setEntityType(e.target.value)}>
-                  <option value="Lead">Lead</option>
-                  <option value="Contact">Contact</option>
-                </Select>
-              </div>
-              <div>
-                <Label>{tab === "history" ? "Entity ID" : "Entity IDs (comma separated)"}</Label>
-                <Input value={entityIds} onChange={(e) => setEntityIds(e.target.value)} placeholder="abc123" />
-              </div>
-            </>
-          )}
           {tab === "history" && (
             <>
               <div>
